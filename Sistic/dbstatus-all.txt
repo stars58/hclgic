@@ -1,0 +1,170 @@
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/galaxy"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)replace;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/glxypac"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/jwpac"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/master"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/pac"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/master"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/sgcloud"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/spmaster"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/sptshub"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/sptspac"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/venetian"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/wkcd"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+bridge dbstatus as "jdbc:oracle:thin:mainuser/passw0rd@10.103.10.33:2115/wkcdpac"(SELECT
+instance_Name ,
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select to_char(current_utilization) from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT to_char(COUNT(*)) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select to_char(ROUND(VALUE,2), 'FM990.90') value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)append;
+select * From dbstatus;

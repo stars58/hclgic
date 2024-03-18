@@ -1,0 +1,170 @@
+vng	
+Check the status of the cluster and all RAC components
+> crs_stat -t 
+or 
+> crsctl check crs
+
+Check OCR location
+> ocrcheck
+
+List the current location of the voting disks. 
+> crsctl query css votedisk
+
+Check the ASM using command
+> asmcmd
+
+SQL> COL % FORMAT 99.0
+SQL> SELECT name, free_mb, total_mb, free_mb/total_mb*100 "%" FROM v$asm_diskgroup;
+
+NAME                              FREE_MB   TOTAL_MB     %
+------------------------------ ---------- ---------- -----
+DATA                               917104    1482145  61.9
+RECOVER                             17387      17437  99.7
+
+
+services in 10g
+================
+srvconfig -init
+srvctl -h
+
+1. adding database
+srvctl add database -d opera -o d:\oracle\1020\database
+srvctl add instance -d opera -i opera1 -n servernamenode1
+
+2. starting database
+srvctl start database -d opera
+srvctl start instance -d opera -i opera1
+
+3) stopping datanase
+srvctl stop database -d opera
+srvctl stop instance -d opera -i opera1
+
+4) status
+srvctl status database -d opera
+
+5) service
+eg. oxihub as services with opera6 is primary and opera5 as alternative
+srvctl add service -d opera -s oxihub -r opera6 -a opera5
+srvctl relocate service -d slimsgspord -s oxihub -i opera1 -t opera3
+srvctl status service -d slimsgprod
+srvctl status service -h
+srvctl start service -h
+
+
+6) config
+srvctl config database -d opera
+srvctl config listener -l LISTENER -a
+
+srvctl status server -n oe01db01,oe01db02,oe01db03,oe01db04
+srvctl status instance -d dbm -i dbm1
+srvctl status asm
+srvctl status diskgroup -g DATA1
+
+crsctl status resource -t | grep db
+srvctl config database -d xxxx
+
+To list just active nodes
+olsnodes -s –t
+11g
+=======
+$GRID_HOME/bin/crsctl stat res -t -init 
+$GRID_HOME/bin/crsctl stat res -t 
+$GRID_HOME/bin/crsctl stat res -p | grep AUTO_START
+$GRID_HOME/bin/crsctl check cluster 
+$GRID_HOME/bin/crsctl check cluster -all 
+$GRID_HOME/bin/crsctl start cluster -n dbnode1
+$GRID_HOME/bin/srvctl status nodeapps 
+$GRID_HOME/bin/srvctl config nodeapps 
+$GRID_HOME/bin/ocrcheck 
+$GRID_HOME/bin/ocrcheck -local 
+$GRID_HOME/bin/crsctl query css votedisk 
+$GRID_HOME/bin/crsctl query crs softwareversion 
+$GRID_HOME/bin/crsctl query crs activeversion 
+crsctl query crs administrator
+crsctl check has
+crsctl check crs
+crsctl status serverpool -p
+crsctl get cluster mode status
+crsctl get node role config
+
+listener
+-----------
+srvctl config scan
+srvctl status scan
+cluvfy comp scan
+srvctl status scan_listener
+
+crs_relocate [vip resource name]
+
+drop ASM diskgroup
+====================
+DROP DISKGROUP sp_dgroup2 including contents;
+
+Rename ASM disk group on 11gR2 
+==============================
+1.First unmount the diskgroup
+asmcmd umount DATA1
+
+2. Verify whether diskgroup has been mounted or not
+asmcmd lsdg
+
+3.Rename diskgroup
+renamedg phase=both dgname=DATA1 newdgname=DATA3 verbose=true
+
+4. Mount the new diskgroup
+asmcmd mount DATA3
+
+others
+=========
+lsdsk 	- lask oracle asm disk
+chkdg 	- check repair diskgroup
+iostat 	- obtain iostat -et 2 (every 2 sec)
+	- iostat -G DATA
+
+Cluster Verification Utility (CVU) – is used to collect pre and post cluster installation configuration details at various levels and various components. With 11gR2, it also provides the ability to verify the cluster health. Look at some of the useful commands below:
+
+$ ./cluvfy comp healthcheck –collect cluster –bestpractice –html
+$ ./cluvfy comp healthcheck –collect cluster|database
+
+
+Cluster checks:
+$ crsctl check cluster -all
+
+OCR Integrety verification: 
+$ cluvfy comp ocr
+
+Verification of attached shared storage
+$ cluvfy comp ssa -n all
+
+-- Find interconnect IPs and Interface details
+$ oifcfg getif
+
+-- Post installation verification:
+$ cluvfy stage -post crsinst -n rac01,rac02
+
+Clusterware resource ora.cvu
+-- Stopping cvu
+C:\Users\inam>srvctl stop cvu
+C:\Users\inam>srvctl status cvu
+CVU is enabled but is not running
+
+--Starting cvu
+C:\Users\inam>srvctl start cvu
+C:\Users\inam>srvctl status cvu
+CVU is enabled and running on node or-11
+
+-- enable/disable ora.cvu
+C:\Users\inam>srvctl enable cvu
+PRKO-2703 : CVU is already enabled
+
+-- On Unix
+$ crsctl stat res ora.cvu -p | grep ENABLED
+ENABLED=1
+C:\Users\inam>srvctl disable cvu
+
+How to Stop/Start the whole cluster?
+crsctl stop cluster -all
+crsctl start cluster -all
+
+Find offline resources: 
+crs_stat -t | grep -i offline

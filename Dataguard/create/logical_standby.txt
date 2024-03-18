@@ -1,0 +1,31 @@
+1) create phyical standby
+
+2) Enable supplemental logging on the primary
+alter database add supplemental log data (primary key, unique index) columns;
+
+Create logminer dictionary
+EXECUTE DBMS_LOGSTDBY.BUILD;
+
+3) Shut down the standby
+
+4) Create the new logical standby controlfile
+alter database create logical standby controlfile as '/database/backup/control.ctl'
+
+5) Activate the standby database
+startup mount;
+alter database recover managed standby database disconnect;
+
+We must wait for media recovery to complete prior to continuing. We know that media recovery is complete when the following messages are printed to the alert log:
+
+MRP0: Media Recovery Complete
+MRP0: Background Media Recovery process shutdown
+
+Once media recovery is complete, we must then activate the standby database with the following command:
+
+alter database activate standby database;
+
+6) ALTER DATABASE GUARD ALL
+
+7) ALTER DATABASE OPEN 
+
+8) ALTER DATABASE START LOGICAL STANDBY APPLY; 

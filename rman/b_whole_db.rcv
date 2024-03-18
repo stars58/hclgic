@@ -1,0 +1,18 @@
+connect target /
+run {
+allocate channel d1 device type disk maxpiecesize 2G # 1 file 2GB
+backup database;
+delete noprompt obsolete;
+}
+
+# backup particular location
+backup database format 'c:\rman\df_t%t_s%s_p%p';
+
+# compressed backup
+backup as compressed backupset database;
+backup as compressed backupset format 'c:\backup\ora_%T' database;
+backup as compressed backupset archivelog all;
+
+# spool
+spool log to 'c:\temp\temp.log';
+spool log off;

@@ -1,0 +1,7 @@
+startup;
+sql 'select first_change# from v$log where group#=3'; 
+run {
+   restore database until scn 123456;
+   recover database until scn 123456;
+}
+alter database open resetlogs;

@@ -1,0 +1,24 @@
+SHOW GLOBAL STATUS LIKE 'Threads_connected';
+SHOW GLOBAL STATUS LIKE 'Uptime';
+SHOW GLOBAL STATUS LIKE 'Queries';
+mysql -E -s 'SHOW ENGINE INNODB STATUS' |grep "Free Buffers"
+
+EXPLAIN FOR CONNECTION connection_id
+
+mysqladmin ping
+mysqladmin status
+
+# to find which queries were executed
+SELECT COUNT(*) ,user_host FROM mysql.general_log
+GROUP BY user_host ORDER BY count(*) desc;
+
+# to find which statement appear most in slow query
+SELECT COUNT(*) ,user_host FROM mysql.slow_log
+GROUP BY user_host OREDER BY count(*) desc;
+
+# replication status
+SHOW SLAVE STATUS\G
+SELECT * FROM performance_schema.replication_status\G
+
+# to determine cache status
+SELECT @@innodb_buffer_pool_size, @@key_buffer_size

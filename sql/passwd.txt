@@ -1,0 +1,44 @@
+set heading off lineszie 200;
+
+spool pass.txt
+
+select 'alter user '||name||' identified by values '''||password||''';' from user$ where spare4 is null and password is not null and name='SYS'
+union
+select 'alter user '||name||' identified by values '''||spare4||';'||password||''';' from user$ where spare4 is not null and password is not null and name='SYS';
+
+spool off;
+
+---------------------------------------------------------------------------------
+BEGIN
+	V_USERNAME := '&USERNAME';
+	FOR C1REC IN C1(V_USERNAME) LOOP
+		DBMS_OUTPUT.PUT_LINE('ALTER PROFILE ' || C1REC.PROFILE|| ' LIMIT PASSWORD REUSE_TIME UNLIMITED;');
+		DBMS_OUTPUT.PUT_LINE('ALTER PROFILE ' || C1REC.PROFILE|| ' LIMIT PASSWORD REUSE_MAX UNLIMITED;');
+
+		SELECT RPAD('=',10,'=') INTO V_LINE FROM DUAL;
+		DBMS_OUTPUT.PUT_LINE(V_LINE);
+
+	BEGIN			
+		select 'alter user '||name||' identified by values '''||password||''';' INTO V_ALTER_pASSWD 
+		from user$ where spare4 is null and password is not null and name=UPPER(V_USERNAME);
+	EXCEPTION
+		WHEN OTHERS THEN NULL;
+	END;
+
+	BEGIN
+		select 'alter user '||name||' identified by values '''||spare4||';'||password||''';' 
+		INTO V_ALTER_PASSWD from user$ where spare4 is not null and password is not null and name=UPPER(V_USERNAME);
+	EXCEPTION
+		WHEN OTHERS THEN NULL;
+	END;
+	
+
+		DBMS_OUTPUT.PUT_LINE(V_ALTER_PASSWD);
+
+		DBMS_OUTPUT.PUT_LINE(V_LINE);
+		DBMS_OUTPUT.PUT_LINE('ALTER PROFILE ' || C1REC.PROFILE|| ' LIMIT PASSWORD REUSE_TIME 365;');
+		DBMS_OUTPUT.PUT_LINE('ALTER PROFILE ' || C1REC.PROFILE|| ' LIMIT PASSWORD REUSE_MAX 20;');
+
+	END LOOP;
+END;
+

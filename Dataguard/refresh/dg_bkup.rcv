@@ -1,0 +1,14 @@
+run {  
+configure channel device type disk format 'd:\backup\%U'; 
+#backup as compressed backupset format xxx database
+backup database; 
+backup current controlfile for standby; 
+sql "alter system archive log current"; 
+backup archivelog from time 'sysdate -1/24'; 
+} 
+
+
+11g
+----
+backup as copy current controlfile for standby; 
+restore standby controlfile from '.......'

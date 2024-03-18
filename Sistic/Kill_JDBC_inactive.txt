@@ -1,0 +1,11 @@
+begin     
+    for x in (  
+            select Sid, Serial#, machine, program  
+            from v$session  
+            where  
+                program = 'JDBC Thin Client' and status='INACTIVE'  
+        ) loop  
+        execute immediate 'Alter System Kill Session '''|| x.Sid  
+                     || ',' || x.Serial# || ''' IMMEDIATE';  
+    end loop;  
+end;

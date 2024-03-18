@@ -1,0 +1,3 @@
+run {  
+duplicate target database for standby dorecover nofilenamecheck;  
+}  

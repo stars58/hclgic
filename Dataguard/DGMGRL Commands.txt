@@ -1,0 +1,231 @@
+Open standby database as read only
+==================================
+
+DGMGRL> edit database 'btcrsdg1' set state='read-only';
+Succeeded.
+
+
+Put database back to managed recovery from "read only" mode
+===========================================================
+
+
+
+DGMGRL> edit database 'btcrsdg1' set state='online';
+Succeeded.
+
+
+
+DGMGRL> show configuration
+
+Configuration
+  Name:                ESMMDG
+  Enabled:             YES
+  Protection Mode:     MaxPerformance
+  Fast-Start Failover: DISABLED
+  Databases:
+    ESMMDG01 - Physical standby database
+    ESMMDB01 - Primary database
+
+Current status for "ESMMDG":
+SUCCESS
+
+DGMGRL> show database verbose 'ESMMDB01'
+Database
+  Name:            ESMMDB01
+  Role:            PRIMARY
+  Enabled:         YES
+  Intended State:  ONLINE
+  Instance(s):
+    MYMICROS
+
+  Properties:
+    InitialConnectIdentifier        = 'ESMMDB01'
+    ObserverConnectIdentifier       = ''
+    LogXptMode                      = 'ASYNC'
+
+Disable log transport and log apply
+===================================
+
+edit database 'ESMMDG01' set property 'LogShipping'='OFF';
+edit database 'ESMMDG01' set state='LOG-APPLY-OFF';
+
+edit database 'ESINDG01' set property 'LogShipping'='OFF';
+edit database 'ESINDG01' set state='LOG-APPLY-OFF';
+
+
+Enable log transport and log apply
+===================================
+
+edit database 'ESMMDG01' set property 'LogShipping'='ON';
+edit database 'ESMMDG01' set state='ONLINE';
+
+edit database 'ESINDG01' set property 'LogShipping'='ON';
+edit database 'ESINDG01' set state='ONLINE';
+
+
+==============================================================================================
+
+
+
+Equivalent Broker Commands to 'ALTER SYSTEM'
+SQL> alter database recover managed standby database cancel;
+DGMGRL> edit database 'stby_dbname' set state='LOG-APPLY-OFF';
+
+SQL> alter database recover managed standby database disconnect;
+DGMGRL> edit database 'stby_dbname' set state='ONLINE';
+
+SQL> alter system set log_archive_max_processes=4;
+DGMGRL> edit database 'dbname' set property 'LogArchiveMaxProcesses'=4;
+
+SQL> alter system set log_archive_dest_state_2='enable' scope=both;
+DGMGRL> edit database 'stby_dbname' set property 'LogShipping'='ON';
+
+SQL> alter system set log_archive_dest_state_2='defer' scope=both;
+DGMGRL> edit database 'stby_dbname' set property 'LogShipping'='OFF';
+
+DGMGRL> edit database 'pri_dbname' set state='LOG-TRANSPORT-OFF';
+This will defer all standby databases
+
+
+
+=================================================
+Convert Sandby database to Standby Snapshot
+=================================================
+
+DGMGRL> show configuration
+
+Configuration - mpgv5
+
+  Protection Mode: MaxPerformance
+  Databases:
+    mpgv5   - Primary database
+    mpgv5dg - Physical standby database
+
+Fast-Start Failover: DISABLED
+
+Configuration Status:
+SUCCESS
+
+Stop log apply on the standby database
+---------------------------------------
+DGMGRL> edit database 'mpgv5dg' set state='Log-apply-off';
+Succeeded.
+DGMGRL>
+
+
+Convert to snapshot standby
+-----------------------------
+
+SQL> alter database convert to snapshot standby;
+
+
+SQL>  select open_mode,database_role from v$database;
+
+OPEN_MODE            DATABASE_ROLE
+-------------------- ----------------
+MOUNTED              SNAPSHOT STANDBY
+
+
+SQL> shutdown immediate
+ORA-01109: database not open
+
+
+Database dismounted.
+ORACLE instance shut down.
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area 3206836224 bytes
+Fixed Size                  2232640 bytes
+Variable Size            1979715264 bytes
+Database Buffers         1207959552 bytes
+Redo Buffers               16928768 bytes
+Database mounted.
+Database opened.
+SQL> select open_mode,database_role from v$database;
+
+OPEN_MODE            DATABASE_ROLE
+-------------------- ----------------
+READ WRITE           SNAPSHOT STANDBY
+
+######Now database is open for working##########
+
+
+=================================================
+Convert Snapshot Sandby back to Standby database
+=================================================
+
+
+SQL> shutdown immediate
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+
+
+SQL> startup mount
+ORACLE instance started.
+
+Total System Global Area 3206836224 bytes
+Fixed Size                  2232640 bytes
+Variable Size            1996492480 bytes
+Database Buffers         1191182336 bytes
+Redo Buffers               16928768 bytes
+Database mounted.
+
+SQL> alter database convert to physical standby;
+
+Database altered.
+
+
+SQL> shutdown immediate
+ORA-01507: database not mounted
+
+
+ORACLE instance shut down.
+SQL> startup mount
+ORACLE instance started.
+
+Total System Global Area 3206836224 bytes
+Fixed Size                  2232640 bytes
+Variable Size            1996492480 bytes
+Database Buffers         1191182336 bytes
+Redo Buffers               16928768 bytes
+Database mounted.
+SQL> exit
+Disconnected from Oracle Database 11g Enterprise Edition Release 11.2.0.3.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+
+[ormicros@SGPvFSMPGDG3 ~]$ dgmgrl
+DGMGRL for Linux: Version 11.2.0.3.0 - 64bit Production
+
+Copyright (c) 2000, 2009, Oracle. All rights reserved.
+
+Welcome to DGMGRL, type "help" for information.
+DGMGRL> connect /
+Connected.
+
+DGMGRL> edit database 'mpgv5dg' set state='online';
+Succeeded.
+
+DGMGRL>
+
+
+######Now database is back to Standby database##########
+
+create configuration sdw1p149 as primary database is 'sdw1p149' connect identifier is 'sdw1p149';
+add database 'sdw1p149_dg' as connect identifier is 'sdw1p149_dg' maintained as physical;
+
+
+RMAN> select current_scn from v$database;
+
+prod CURRENT_SCN
+-----------
+78532429296
+
+stby   CURRENT_SCN
+--------------
+ 7842572341715
+
+mmvtkphrdbp004a
+

@@ -1,0 +1,250 @@
+alter session set container= cdb$root;
+set serverout on
+set verify off
+set lines 200
+set pages 2000
+DECLARE
+v_ts_id number;
+v_con_id number;
+v_con_name varchar2(20);
+not_in_awr EXCEPTION;
+v_ts_block_size number;
+v_begin_snap_id number;
+v_end_snap_id number;
+v_begin_snap_date date;
+v_end_snap_date date;
+v_numdays number;
+v_count number;
+v_ts_begin_size number;
+v_ts_end_size number;
+v_ts_growth number;
+v_ts_begin_allocated_space number;
+v_ts_end_allocated_space number;
+v_db_begin_size number := 0;
+v_db_end_size number := 0;
+v_db_begin_allocated_space number := 0;
+v_db_end_allocated_space number := 0;
+v_db_growth number := 0;
+v_all_db_begin_size number := 0;
+v_all_db_end_size number := 0;
+v_all_db_begin_allocated_space number := 0;
+v_all_db_end_allocated_space number := 0;
+v_all_db_growth number := 0;
+cursor v_con_cur is select con_id, name from v$containers where OPEN_MODE='READ WRITE' and RESTRICTED='NO';
+cursor v_ts_cur(par_con_id number) is select tablespace_name from cdb_tablespaces where contents='PERMANENT' and con_id = par_con_id;
+
+BEGIN
+FOR v_con_rec in v_con_cur
+LOOP 
+v_db_begin_allocated_space := 0;
+v_db_end_allocated_space := 0;
+v_db_begin_size := 0;
+v_db_end_size := 0;
+v_db_growth := 0;
+
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('Container = '||v_con_rec.name);
+DBMS_OUTPUT.PUT_LINE('====================');
+FOR v_ts_rec in v_ts_cur(v_con_rec.con_id)
+LOOP
+v_ts_begin_allocated_space := 0;
+v_ts_end_allocated_space := 0;
+v_ts_begin_size := 0;
+v_ts_end_size := 0;
+
+BEGIN
+SELECT ts# into v_ts_id FROM v$tablespace where name = v_ts_rec.tablespace_name and con_id=v_con_rec.con_id;
+SELECT block_size into v_ts_block_size FROM cdb_tablespaces where tablespace_name = v_ts_rec.tablespace_name and con_id=v_con_rec.con_id;
+DBMS_OUTPUT.PUT_LINE('Tablespace = '||v_ts_rec.tablespace_name);
+select count(*) into v_count from dba_hist_tbspc_space_usage where tablespace_id=v_ts_id and con_id=v_con_rec.con_id;
+IF v_count=0 THEN
+RAISE not_in_awr;
+END IF;
+SELECT min(snap_id), max(snap_id), min(trunc(to_date(rtime,'MM/DD/YYYY HH24:MI:SS'))), max(trunc(to_date(rtime,'MM/DD/YYYY HH24:MI:SS')))
+into v_begin_snap_id,v_end_snap_id, v_begin_snap_date, v_end_snap_date from dba_hist_tbspc_space_usage where tablespace_id=v_ts_id and con_id=v_con_rec.con_id;
+IF UPPER(v_ts_rec.tablespace_name)='SYSTEM' THEN
+v_numdays := v_end_snap_date - v_begin_snap_date;
+END IF;
+
+SELECT round(max(tablespace_size)*v_ts_block_size/1024/1024,2) into v_ts_begin_allocated_space from dba_hist_tbspc_space_usage where tablespace_id=v_ts_id and snap_id = v_begin_snap_id and con_id=v_con_rec.con_id;
+SELECT round(max(tablespace_size)*v_ts_block_size/1024/1024,2) into v_ts_end_allocated_space from dba_hist_tbspc_space_usage where tablespace_id=v_ts_id and snap_id = v_end_snap_id and con_id=v_con_rec.con_id;
+SELECT round(max(tablespace_usedsize)*v_ts_block_size/1024/1024,2) into v_ts_begin_size from dba_hist_tbspc_space_usage where tablespace_id=v_ts_id and snap_id = v_begin_snap_id and con_id=v_con_rec.con_id;
+SELECT round(max(tablespace_usedsize)*v_ts_block_size/1024/1024,2) into v_ts_end_size from dba_hist_tbspc_space_usage where tablespace_id=v_ts_id and snap_id = v_end_snap_id and con_id=v_con_rec.con_id;
+v_db_begin_allocated_space := v_db_begin_allocated_space + v_ts_begin_allocated_space;
+v_db_end_allocated_space := v_db_end_allocated_space + v_ts_end_allocated_space;
+v_db_begin_size := v_db_begin_size + v_ts_begin_size;
+v_db_end_size := v_db_end_size + v_ts_end_size;
+v_db_growth := v_db_end_size - v_db_begin_size;
+v_all_db_begin_allocated_space := v_all_db_begin_allocated_space + v_ts_begin_allocated_space;
+v_all_db_end_allocated_space := v_all_db_end_allocated_space + v_ts_end_allocated_space;
+v_all_db_begin_size := v_all_db_begin_size + v_ts_begin_size;
+v_all_db_end_size := v_all_db_end_size + v_ts_end_size;
+v_all_db_growth := v_all_db_end_size - v_all_db_begin_size;
+
+EXCEPTION
+WHEN NOT_IN_AWR THEN
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('====================================================================================================================');
+DBMS_OUTPUT.PUT_LINE('!!! ONE OR MORE TABLESPACES USAGE INFORMATION NOT FOUND IN AWR !!!');
+DBMS_OUTPUT.PUT_LINE('Execute DBMS_WORKLOAD_REPOSITORY.CREATE_SNAPSHOT, or wait for next AWR snapshot capture before executing this script');
+DBMS_OUTPUT.PUT_LINE('to get accurate sizing details');
+DBMS_OUTPUT.PUT_LINE('====================================================================================================================');
+END;
+END LOOP;
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('Summary');
+DBMS_OUTPUT.PUT_LINE('========');
+DBMS_OUTPUT.PUT_LINE('1) Allocated Space: '||v_db_end_allocated_space||' MB'||' ('||round(v_db_end_allocated_space/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('2) Used Space: '||v_db_end_size||' MB'||' ('||round(v_db_end_size/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('3) Used Space Percentage: '||round(v_db_end_size/v_db_end_allocated_space*100,2)||' %');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('History');
+DBMS_OUTPUT.PUT_LINE('========');
+DBMS_OUTPUT.PUT_LINE('1) Allocated Space on '||v_begin_snap_date||': '||v_db_begin_allocated_space||' MB'||' ('||round(v_db_begin_allocated_space/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('2) Current Allocated Space on '||v_end_snap_date||': '||v_db_end_allocated_space||' MB'||' ('||round(v_db_end_allocated_space/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('3) Used Space on '||v_begin_snap_date||': '||v_db_begin_size||' MB'||' ('||round(v_db_begin_size/1024,2)||' GB)' );
+DBMS_OUTPUT.PUT_LINE('4) Current Used Space on '||v_end_snap_date||': '||v_db_end_size||' MB'||' ('||round(v_db_end_size/1024,2)||' GB)' );
+DBMS_OUTPUT.PUT_LINE('5) Total growth during last '||v_numdays||' days between '||v_begin_snap_date||' and '||v_end_snap_date||': '||v_db_growth||' MB'||' ('||round(v_db_growth/1024,2)||' GB)');
+IF (v_db_growth <= 0 OR v_numdays <= 0) THEN
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('No data growth was found for the Database');
+ELSE
+DBMS_OUTPUT.PUT_LINE('6) Per day growth during last '||v_numdays||' days: '||round(v_db_growth/v_numdays,2)||' MB'||' ('||round((v_db_growth/v_numdays)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('Expected Growth');
+DBMS_OUTPUT.PUT_LINE('===============');
+DBMS_OUTPUT.PUT_LINE('1) Expected growth for next 30 days: '|| round((v_db_growth/v_numdays)*30,2)||' MB'||' ('||round(((v_db_growth/v_numdays)*30)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('2) Expected growth for next 60 days: '|| round((v_db_growth/v_numdays)*60,2)||' MB'||' ('||round(((v_db_growth/v_numdays)*60)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('3) Expected growth for next 90 days: '|| round((v_db_growth/v_numdays)*90,2)||' MB'||' ('||round(((v_db_growth/v_numdays)*90)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('/\/\/\/\/\/\/\/\/\/\/ END \/\/\/\/\/\/\/\/\/\/\');
+END IF;
+v_con_id:=v_con_rec.con_id;
+END LOOP;
+IF v_con_id <> 0 THEN
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('Combined Space Usage by all Containers');
+DBMS_OUTPUT.PUT_LINE('=======================================');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('1) Allocated Space: '||v_all_db_end_allocated_space||' MB'||' ('||round(v_all_db_end_allocated_space/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('2) Used Space: '||v_all_db_end_size||' MB'||' ('||round(v_all_db_end_size/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('3) Used Space Percentage: '||round(v_all_db_end_size/v_all_db_end_allocated_space*100,2)||' %');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('History');
+DBMS_OUTPUT.PUT_LINE('========');
+DBMS_OUTPUT.PUT_LINE('1) Allocated Space on '||v_begin_snap_date||': '||v_all_db_begin_allocated_space||' MB'||' ('||round(v_all_db_begin_allocated_space/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('2) Current Allocated Space on '||v_end_snap_date||': '||v_all_db_end_allocated_space||' MB'||' ('||round(v_all_db_end_allocated_space/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('3) Used Space on '||v_begin_snap_date||': '||v_all_db_begin_size||' MB'||' ('||round(v_all_db_begin_size/1024,2)||' GB)' );
+DBMS_OUTPUT.PUT_LINE('4) Current Used Space on '||v_end_snap_date||': '||v_all_db_end_size||' MB'||' ('||round(v_all_db_end_size/1024,2)||' GB)' );
+DBMS_OUTPUT.PUT_LINE('5) Total growth during last '||v_numdays||' days between '||v_begin_snap_date||' and '||v_end_snap_date||': '||v_all_db_growth||' MB'||' ('||round(v_all_db_growth/1024,2)||' GB)');
+IF (v_db_growth <= 0 OR v_numdays <= 0) THEN
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('No data growth was found for the Database');
+ELSE
+DBMS_OUTPUT.PUT_LINE('6) Per day growth during last '||v_numdays||' days: '||round(v_all_db_growth/v_numdays,2)||' MB'||' ('||round((v_all_db_growth/v_numdays)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('Expected Growth');
+DBMS_OUTPUT.PUT_LINE('===============');
+DBMS_OUTPUT.PUT_LINE('1) Expected growth for next 30 days: '|| round((v_all_db_growth/v_numdays)*30,2)||' MB'||' ('||round(((v_all_db_growth/v_numdays)*30)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('2) Expected growth for next 60 days: '|| round((v_all_db_growth/v_numdays)*60,2)||' MB'||' ('||round(((v_all_db_growth/v_numdays)*60)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE('3) Expected growth for next 90 days: '|| round((v_all_db_growth/v_numdays)*90,2)||' MB'||' ('||round(((v_all_db_growth/v_numdays)*90)/1024,2)||' GB)');
+DBMS_OUTPUT.PUT_LINE(CHR(10));
+DBMS_OUTPUT.PUT_LINE('/\/\/\/\/\/\/\/\/\/\/ END \/\/\/\/\/\/\/\/\/\/\');
+END IF;
+
+END IF;
+
+END;
+
+/ 
+
+##############################################
+
+Please give your feedback if you find any difficulty in executing this script or if this script does not work for you.
+
+Sample Output
+
+Container = CDB$ROOT
+====================
+Tablespace = SYSTEM
+Tablespace = SYSAUX
+Tablespace = USERS
+Tablespace = TEST
+
+Summary
+========
+1) Allocated Space: 1670 MB (1.63 GB)
+2) Used Space: 1518.82 MB (1.48 GB)
+3) Used Space Percentage: 90.95 %
+
+
+History
+========
+1) Allocated Space on 01-JUL-15: 1455 MB (1.42 GB)
+2) Current Allocated Space on 09-JUL-15: 1670 MB (1.63 GB)
+3) Used Space on 01-JUL-15: 1385.38 MB (1.35 GB)
+4) Current Used Space on 09-JUL-15: 1518.82 MB (1.48 GB)
+5) Total growth during last 8 days between 01-JUL-15 and 09-JUL-15: 133.44 MB (.13 GB)
+6) Per day growth during last 8 days: 16.68 MB (.02 GB)
+
+
+Expected Growth
+===============
+1) Expected growth for next 30 days: 500.4 MB (.49 GB)
+2) Expected growth for next 60 days: 1000.8 MB (.98 GB)
+3) Expected growth for next 90 days: 1501.2 MB (1.47 GB)
+
+/\/\/\/\/\/\/\/\/\/\/ END \/\/\/\/\/\/\/\/\/\/\
+Container = PDB2
+====================
+Tablespace = SYSTEM
+Tablespace = SYSAUX
+
+Summary
+========
+1) Allocated Space: 780 MB (.76 GB)
+2) Used Space: 740.69 MB (.72 GB)
+3) Used Space Percentage: 94.96 %
+
+History
+========
+1) Allocated Space on 02-JUL-15: 760 MB (.74 GB)
+2) Current Allocated Space on 09-JUL-15: 780 MB (.76 GB)
+3) Used Space on 02-JUL-15: 726.56 MB (.71 GB)
+4) Current Used Space on 09-JUL-15: 740.69 MB (.72 GB)
+5) Total growth during last 7 days between 02-JUL-15 and 09-JUL-15: 14.13 MB (.01 GB)
+6) Per day growth during last 7 days: 2.02 MB (0 GB)
+
+Expected Growth
+===============
+1) Expected growth for next 30 days: 60.56 MB (.06 GB)
+2) Expected growth for next 60 days: 121.11 MB (.12 GB)
+3) Expected growth for next 90 days: 181.67 MB (.18 GB)
+
+/\/\/\/\/\/\/\/\/\/\/ END \/\/\/\/\/\/\/\/\/\/\
+Combined Space Usage by all Containers
+=======================================
+
+1) Allocated Space: 2450 MB (2.39 GB)
+2) Used Space: 2259.51 MB (2.21 GB)
+3) Used Space Percentage: 92.22 %
+
+
+History
+========
+1) Allocated Space on 02-JUL-15: 2215 MB (2.16 GB)
+2) Current Allocated Space on 09-JUL-15: 2450 MB (2.39 GB)
+3) Used Space on 02-JUL-15: 2111.94 MB (2.06 GB)
+4) Current Used Space on 09-JUL-15: 2259.51 MB (2.21 GB)
+5) Total growth during last 7 days between 02-JUL-15 and 09-JUL-15: 147.57 MB (.14 GB)
+6) Per day growth during last 7 days: 21.08 MB (.02 GB)
+
+
+
+Expected Growth
+===============
+1) Expected growth for next 30 days: 632.44 MB (.62 GB)
+2) Expected growth for next 60 days: 1264.89 MB (1.24 GB)
+3) Expected growth for next 90 days: 1897.33 MB (1.85 GB)
+
+/\/\/\/\/\/\/\/\/\/\/ END \/\/\/\/\/\/\/\/\/\/\

@@ -1,0 +1,170 @@
+----
+-- Listing 2.2: Show Schedule objects
+-----
+TTITLE 'Schedules:'
+COL owner               FORMAT A08  HEADING 'Owner'
+COL schedule_name       FORMAT A20  HEADING 'Schedule'
+COL start_date          FORMAT A20  HEADING 'Starts|On'
+COL end_date            FORMAT A20  HEADING 'Ends|On'
+COL repeat_interval     FORMAT A45  HEADING 'Interval'
+
+SELECT
+     owner
+    ,schedule_name
+    ,to_char(start_date, 'mm/dd/yyyy hh24:mi:ss') start_date
+    ,to_char(end_date, 'mm/dd/yyyy hh24:mi:ss') end_date
+    ,repeat_interval
+  FROM dba_scheduler_schedules;
+
+ 
+-----
+-- Listing 2.3: Show Program objects
+-----
+-- What program objects are available?
+TTITLE 'Programs:'
+COL owner               FORMAT A08  HEADING 'Owner'
+COL program_name        FORMAT A20  HEADING 'Program'
+COL program_type        FORMAT A16  HEADING 'Type'
+COL program_action      FORMAT A32  HEADING 'Action'
+
+SELECT
+     owner
+    ,program_name
+    ,program_type
+    ,program_action
+  FROM dba_scheduler_programs;
+
+-- What program's arguments are attached?
+TTITLE 'Program Arguments:'
+COL owner               FORMAT A08  HEADING 'Owner'
+COL program_name        FORMAT A20  HEADING 'Program'
+COL argument_name       FORMAT A12  HEADING 'Arg Name'
+COL argument_position   FORMAT 999  HEADING 'Arg|Pos'
+COL argument_type       FORMAT A12  HEADING 'Arg Type'
+COL default_value       FORMAT A12  HEADING 'Default|Value'
+COL out_argument        FORMAT A06  HEADING 'Out|Arg?'
+
+SELECT
+     owner
+    ,program_name
+    ,argument_name
+    ,argument_position
+    ,argument_type
+    ,default_value
+    ,out_argument
+  FROM dba_scheduler_program_args;
+
+ 
+-----
+-- Listing 2.4: Show Job objects
+-----
+COL owner               FORMAT A08  HEADING 'Owner'
+COL job_name            FORMAT A20  HEADING 'Job'
+COL program_name        FORMAT A20  HEADING 'Program|Name'
+COL job_class           FORMAT A24  HEADING 'Job Class'
+COL job_type            FORMAT A12  HEADING 'Job|Type'
+COL job_action          FORMAT A12  HEADING 'Job|Action'
+
+TTITLE 'Jobs:'
+SELECT
+    owner
+   ,job_name
+   ,state
+   ,job_class
+   ,job_type
+   ,job_action
+  FROM dba_scheduler_jobs;
+
+COL owner               FORMAT A08  HEADING 'Owner'
+COL job_name            FORMAT A20  HEADING 'Job'
+COL program_name        FORMAT A20  HEADING 'Program|Name'
+COL schedule_name       FORMAT A20  HEADING 'Schedule|Name'
+COL enabled             FORMAT A08  HEADING 'Enabled?'
+COL state               FORMAT A08  HEADING 'State'
+COL restartable         FORMAT A08  HEADING 'Restart|-able?'
+COL start_date          FORMAT A32 HEADING 'Start|Date'
+
+TTITLE 'Job Components:'
+SELECT
+    owner
+   ,job_name
+   ,program_name
+   ,schedule_name
+   ,enabled
+   ,state
+   ,restartable
+   ,start_date
+  FROM dba_scheduler_jobs;
+
+-- What are a Job's arguments?
+COL job_name            FORMAT A20  HEADING 'Job'
+COL argument_name       FORMAT A12  HEADING 'Arg Name'
+COL argument_position   FORMAT 999  HEADING 'Arg|Pos'
+COL value               FORMAT A32  HEADING 'Argument Value'
+
+TTITLE 'Job Arguments:'
+SELECT
+    job_name
+   ,argument_name
+   ,argument_position
+   ,value
+  FROM dba_scheduler_job_args;
+
+ 
+-----
+-- Listing 2.5: Show Scheduled Tasks History
+-----
+
+-- Show a high-level view of scheduled task execution history
+COL log_id              FORMAT 9999   HEADING 'Log#'
+COL log_date            FORMAT A32    HEADING 'Log Date'
+COL owner               FORMAT A06    HEADING 'Owner'
+COL job_name            FORMAT A20    HEADING 'Job'
+COL status              FORMAT A10    HEADING 'Status'
+
+TTITLE 'Scheduled Tasks History:'
+SELECT
+     log_id
+    ,log_date
+    ,owner
+    ,job_name
+    ,status
+  FROM dba_scheduler_job_log;
+
+-- What scheduled tasks failed during execution, and why?
+COL log_id              FORMAT 9999   HEADING 'Log#'
+COL log_date            FORMAT A32    HEADING 'Log Date'
+COL owner               FORMAT A06    HEADING 'Owner'
+COL job_name            FORMAT A20    HEADING 'Job'
+COL status              FORMAT A10    HEADING 'Status'
+COL actual_start_date   FORMAT A32    HEADING 'Actual|Start|Date'
+COL error#              FORMAT 999999 HEADING 'Error|Nbr'
+
+TTITLE 'Scheduled Tasks That Failed:'
+SELECT
+     log_id
+    ,log_date
+    ,owner
+    ,job_name
+    ,status
+    ,actual_start_date
+    ,error#
+  FROM dba_scheduler_job_run_details
+ WHERE status <> 'SUCCEEDED'
+ ORDER BY actual_start_date;
+
+-- Which jobs are running right now?
+COL owner               FORMAT A06    HEADING 'Owner'
+COL job_name            FORMAT A20    HEADING 'Job'
+COL session_id          FORMAT 999999 HEADING 'Session'
+COL running_instance    FORMAT A10    HEADING 'Running|Instance'
+COL elapsed_time        FORMAT A12    HEADING 'Elapsed|Time'
+
+TTITLE 'Scheduled Tasks Running Right Now:'
+SELECT
+     owner
+    ,job_name
+    ,session_id
+    ,running_instance
+    ,elapsed_time
+ FROM dba_scheduler_running_jobs;

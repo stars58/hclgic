@@ -1,0 +1,30 @@
+spool primary_to_standby.log
+alter database commit to switchover to standby with session shutdown;
+shutdown immediate;
+startup nomount;
+alter database mount standby database;
+alter database recover managed standby database using current logfile disconnect from session;
+spool off
+
+----------------------------------------------------
+spool standby_primary.log
+alter database commit to switchover to primary with session shutdown;
+shutdown immediate;
+startup;
+spool off
+
+---------------------------------------------------------
+
+spool failover.log
+alter database recover managed standby database cancel;
+alter database activate standby database;
+shutdown immediate;
+startup;
+alter system set log_archive_dest_state_2=defer;
+spool off
+
+---------------------------------------------------------
+# if standby fails to failover, use this
+
+SQL>alter database recover managed standby database finish;
+SQL>alter database commit to switchover to primary with session shutdown;

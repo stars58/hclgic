@@ -1,0 +1,71 @@
+1. Set up init parameters on primary to enable broker
+ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
+ALTER SYSTEM SET DB_UNIQUE_NAME='apple1';
+ALTER SYSTEM SET DB_DOMAIN='db_domain';
+
+2. Set up init parameters on standby
+ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
+ALTER SYSTEM SET DB_UNIQUE_NAME='apple2';
+ALTER SYSTEM SET DB_DOMAIN='db_domain';
+
+3. GLOBAL_DBNAME should be set to <<db_unique_name>>_DGMGRL.<<db_domain>> in listener.ora on all instances of both primary and standby.
+SID_LIST_LISTENER =
+  (SID_LIST =
+ (SID_DESC =
+        (GLOBAL_DBNAME = apple1_dgmgrl)
+        (ORACLE_HOME = c:\oracle\1020)
+        (SID_NAME = apple1)
+        )
+)
+ 
+This is important otherwise you'll have TNS-12154 error during switchover operation.
+
+4. Create the configuration
+
+CREATE CONFIGURATION 'AppleDR'
+ AS
+> PRIMARY DATABASE IS 'apple1'
+> CONNECT IDENTIFIER IS 'apple1'
+
+ADD DATABASE 'apple2'
+> AS
+> CONNECT IDENTIFIER IS 'apple2'
+maintained as physical
+
+Enable the configuration
+ DGMGRL> ENABLE CONFIGURATION
+Enabled.
+
+DGMGRL> SHOW CONFIGURATION
+> show database verbose apple1
+
+6. Troubleshooting
+ Let us see some sample issues and their fix
+
+Issue
+ DGMGRL> CONNECT sys/sys
+ ORA-16525: the Data Guard broker is not yet available
+ 
+Fix
+ Set dg_broker_start=true
+ 
+Issue
+ After enabling the configuration, on issuing SHOW CONFIGURATION, this error comes 
+Warning: ORA-16608: one or more sites have warnings
+ 
+Fix
+ To know details of the error, you may check log which will be generated at bdump with naming as drc{DB_NAME}.log or there are various monitorable properties that can be used to query the database status and assist in further troubleshooting.
+ 
+Monitoring the Data Guard Broker Configuration
+ 
+If we receive any error or warnings we can obtain more information about the same by running the commands as shown below. In this case there is no output seen because currently we are not experiencing any errors or warning.
+
+ DGMGRL> SHOW DATABASE 'TESTPRI' 'StatusReport';
+ DGMGRL> SHOW DATABASE 'TESTPRI' 'LogXptStatus';
+ DGMGRL> SHOW DATABASE 'TESTPRI' 'InconsistentProperties';
+ DGMGRL> SHOW DATABASE 'TESTPRI' 'InconsistentLogXptProps';
+ DGMGRL> SHOW DATABASE 'TESTDG' 'StatusReport';
+ DGMGRL> SHOW DATABASE 'TESTDG' 'LogXptStatus';
+ DGMGRL> SHOW DATABASE 'TESTDG' 'InconsistentProperties';
+ DGMGRL> SHOW DATABASE 'TESTDG' 'InconsistentLogXptProps';
+ 

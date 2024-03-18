@@ -1,0 +1,20 @@
+
+
+OUT Queue query
+col message_type for a15
+col resort for a8
+col total_records for 9999999999999
+select a.user_data.message_type message_type, a.user_data.resort resort, count(*) total_records
+  from oxihub.aq$xmlaqueueout a 
+ where a.msg_state='READY' 
+ group by a.user_data.message_type, a.user_data.resort
+order by 3 desc;
+
+IN Queue query
+col message_type for a15
+col resort for a8
+col total_records for 9999999999999
+select a.user_data.message_type message_type, a.user_data.resort resort, count(*) total_records
+  from oxihub.aq$xmlaqueuein a where a.msg_state='READY' 
+ group by a.user_data.message_type, a.user_data.resort
+order by 3 desc;

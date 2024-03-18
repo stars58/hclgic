@@ -1,0 +1,10 @@
+he formula used (assuming a conservative TCP/IP network overhead of 30%) for calculating the network bandwidth is :
+ 
+Required bandwidth = ((Redo rate bytes per sec. / 0.7) * 8) / 1,000,000 = bandwidth in Mbps
+The Statspack snapshot report will include a "Redo size" line under the "Load Profile" section near the beginning of the report. This line includes the "Per Second" and "Per Transaction" measurements for the redo size in bytes during the snapshot interval. Make a note of the "Per Second" value. Take the highest "Redo size" "Per Second" value of these three snapshots, and that is your peak redo generation rate. 
+
+select * from v$sysmetric_history where metric_name = 'Redo Generated Per Sec';
+
+Required bandwidth = ((Redo rate bytes per sec. / 0.7) * 8) / 1,000,000 = bandwidth in Mbps  
+Required bandwidth = ((512000/0.7) * 8) /1,000,000 
+Required bandwidth = 4.85 Mbps

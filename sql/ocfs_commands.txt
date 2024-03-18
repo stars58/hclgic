@@ -1,0 +1,36 @@
+-- offline cfs drive
+ocfsutil /c offlinevol /m X: 
+
+-- to format cfs on O drive
+1) create a drive letter O in the windows
+2) C:\oracle\1020\crs\cfs>ocfsformat /m o: /c 1024 /v data /f
+
+-- check ocr
+ocrcheck
+
+-- to export ocr
+ocrconfig -export <backup_file_name>
+
+-- to import from the backup
+-- 1) stop crs service first
+-- 2) create an empty file data.ocr
+ocrconfig -import <OCR export_filename>
+
+-- add ocr disk
+-- 1) create an empty file first
+ocrconfig -replace mirror x:\cdata\orange_cluster\data.ocr
+
+-- remove ocr disk
+ocrconfig -replace ocr
+
+-- query voting disk
+C:\>crsctl query css votedisk
+ 0.     0    J:\cdata\orange_cluster\votedsk
+
+-- add voting disk
+-- 1) create the directory first
+crsctl add css votedisk J:\cdata\orange_cluster\votedsk -force   
+
+-- delete voting disk
+-- 1) stop the crs service before deleting voting disk
+crsctl delete css votedisk <VOTEDISK_LOCATION> -force

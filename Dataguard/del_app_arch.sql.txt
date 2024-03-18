@@ -1,0 +1,5 @@
+select 'delete noprompt archivelog from sequence ' ||min(sequence#)||' until sequence ' ||max(sequence#)||' thread '||thread#||';' 
+  from v$archived_log
+ where applied = 'YES' and deleted = 'NO' and standby_dest = 'NO'
+ group by thread#;
+

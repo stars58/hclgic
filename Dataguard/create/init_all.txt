@@ -1,0 +1,61 @@
+#Primary Database Primary role Parameters
+db_unique_name=production
+log_archive_dest_1 = "location=d:\oracle\admin\opera\archive mandatory REOPEN=120"
+log_archive_dest_2='SERVICE=standby ARCH'
+log_archive_dest_state_1=ENABLE
+log_archive_dest_state_2=enable
+log_archive_format = %%ORACLE_SID%%T_%TS%S%R.ARC
+remote_login_passwordfile=exclusive
+
+#Primary Database Standby role Parameters
+fal_server=standby
+fal_client=production
+standby_archive_dest='D:\oracle\admin\opera\archive\standby'
+standby_file_management=auto
+log_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+db_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+
+=========================================================================
+#Standby Database standby role parameters
+db_unique_name=standby
+fal_server=production
+fal_client=standby
+log_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+db_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+standby_archive_dest='D:\ORACLE\admin\opera\archive\standby'
+standby_file_management=AUTO
+
+# Standby database primary role parameters
+log_archive_dest_2='SERVICE=production'
+log_archive_dest_state_2=defer
+log_archive_dest_1 = "location=D:\oracle\admin\opera\archive mandatory reopen=120"
+log_archive_dest_state_1=ENABLE
+log_archive_format = %%ORACLE_SID%%T_%TS%S%R.ARC
+remote_login_passwordfile=exclusive
+
+---------
+  spfile
+---------
+alter system set db_unique_name=opera1;
+alter system set log_archive_dest_1 = "location=d:\oracle\admin\opera\archive mandatory REOPEN=120"
+alter system set log_archive_dest_2='SERVICE=opera2'
+alter system set remote_login_passwordfile=exclusive
+alter system set fal_server=opera2
+alter system set fal_client=opera1
+alter system set standby_file_management=auto
+alter system set log_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+alter system set db_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+
+
+alter system set db_unique_name=opera2
+alter system set fal_server=opera1
+alter system set fal_client=opera2
+alter system set log_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')
+alter system set db_file_name_convert=('d:\oracle\oradata\opera\','d:\oracle\oradata\opera\')'
+alter system set standby_file_management=AUTO
+
+alter system set log_archive_dest_2='SERVICE=opera2'
+alter system set log_archive_dest_state_2=defer
+alter system set log_archive_dest_1 = "location=D:\oracle\admin\opera\archive mandatory reopen=120"
+alter system set log_archive_dest_state_1=ENABLE
+alter system set remote_login_passwordfile=exclusive

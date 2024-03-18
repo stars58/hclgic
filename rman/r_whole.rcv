@@ -1,0 +1,17 @@
+startup mount;
+run {
+   restore database;
+   recover database;
+}
+alter database open;
+
+# restore incomplete
+run {
+   set until time "to_date('01/14/2005 12:12:00','MM/DD/YYYY HH24:MI:SS')";
+   shutdown immediate;
+   startup mount;
+   allocate channel d1 type disk;
+   restore database;
+   recover database;
+   alter database open resetlogs;
+}

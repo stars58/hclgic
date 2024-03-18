@@ -1,0 +1,20 @@
+SELECT "INSTANCE_NAME", "Sessions", "Processes", "Active Sess", "Inactive Sess", "Blocking", "AAS", "Resp Time", "Host %" ,"Mem"
+FROM(
+SELECT
+instance_Name ,
+(select current_utilization from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select current_utilization from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT COUNT(*) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT COUNT(*) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select ROUND(VALUE,2) value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select ROUND(VALUE,2) value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select ROUND(VALUE,2) value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %",
+(select 
+(select value/1024/1024/1024 from v$parameter where lower(name) = 'sga_target') +
+(SELECT round(SUM(pga_alloc_mem)/1024/1024/1024) as PGA FROM v$process)
+"Mem_util"
+from dual) "Mem"
+FROM gv$instance b
+order by 1
+)

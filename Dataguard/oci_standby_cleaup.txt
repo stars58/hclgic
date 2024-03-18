@@ -1,0 +1,11 @@
+cd ~
+mkdir rman
+cd rman
+/usr/bin/wget -nv -nd -np -r -l1 -A"standby_cleanup.sh" -N http://depot:8080/export/scripts/DBA/archlogs
+tr -d '\015' < standby_cleanup.sh  > standby_cleanup.bash && mv standby_cleanup.bash standby_cleanup.sh
+chmod +x standby_cleanup.sh
+echo '0 * * * * /home/oracle/rman/standby_cleanup.sh' > crontab.tmp && crontab crontab.tmp
+11:02
+just check rman if this is already configured
+11:02
+CONFIGURE ARCHIVELOG DELETION POLICY TO APPLIED ON STANDBY;

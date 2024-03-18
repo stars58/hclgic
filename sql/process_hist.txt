@@ -1,0 +1,20 @@
+col begin_interval_time format a30
+ select s.begin_interval_time, rl.current_utilization, rl.max_utilization
+ from DBA_HIST_RESOURCE_LIMIT rl, dba_hist_snapshot s
+ where resource_name = 'sessions' and rl.instance_number=1 and
+ s.snap_id = rl.snap_id and
+ s.instance_number = rl.instance_number
+ order by s.snap_id;
+
+
+col begin_interval_time format a30
+ select s.begin_interval_time, rl.current_utilization, rl.max_utilization
+ from DBA_HIST_RESOURCE_LIMIT rl, dba_hist_snapshot s
+ where resource_name = 'processes' and rl.instance_number=1 and
+ s.snap_id = rl.snap_id and
+ s.instance_number = rl.instance_number
+ order by s.snap_id;
+
+select begin_time,metric_name,minval,maxval from DBA_HIST_SYSMETRIC_SUMMARY where metric_name='Session Limit %' order by begin_time;
+
+select begin_time,metric_name,minval,maxval from DBA_HIST_SYSMETRIC_SUMMARY where metric_name='Process Limit %' order by begin_time;

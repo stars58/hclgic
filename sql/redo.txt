@@ -1,0 +1,47 @@
+If you have ASH, you can use it to find the sessions and queries that waited the most for “log file sync” event. 
+I found that this has some correlation with the worse redo generators.
+
+-- find the sessions and queries causing most redo and when it happened
+
+select SESSION_ID,user_id,sql_id,round(sample_time,'hh'),count(*) from V$ACTIVE_SESSION_HISTORY
+where event like 'log file sync'
+group by  SESSION_ID,user_id,sql_id,round(sample_time,'hh')
+order by count(*) desc
+
+
+08 -- you can look the the SQL itself by:  
+
+select * from DBA_HIST_SQLTEXT  
+where sql_id='dwbbdanhf7p4a'
+
+SELECT dhso.object_name,
+ sum(db_block_changes_delta)
+ FROM dba_hist_seg_stat dhss,
+ dba_hist_seg_stat_obj dhso,
+ dba_hist_snapshot dhs
+ WHERE dhs.snap_id = dhss.snap_id
+ AND dhs.instance_number = dhss.instance_number
+ AND dhss.obj# = dhso.obj#
+ AND dhss.dataobj# = dhso.dataobj#
+ AND begin_interval_time BETWEEN to_date(’2012_09_07 14',’YYYY_MM_DD HH24') AND to_date(’2012_09_07 15',’YYYY_MM_DD HH24')
+ GROUP BY dhso.object_name
+ order by sum(db_block_changes_delta) desc
+
+
+
+SELECT distinct dbms_lob.substr(sql_text,4000,1),
+ FROM dba_hist_sqlstat dhss,
+ dba_hist_snapshot dhs,
+ dba_hist_sqltext dhst
+ WHERE upper(dhst.sql_text) LIKE ‘%INT_UPLOAD_STATUS%’
+AND dhss.snap_id=dhs.snap_id
+ AND dhss.instance_Number=dhs.instance_number
+ AND dhss.sql_id = dhst.sql_id and rownum<2;
+
+
+SELECT s.sid, s.serial#, s.username, s.program,
+           i.block_changes
+           FROM v$session s, v$sess_io i
+           WHERE s.sid = i.sid
+           ORDER BY 5 , 1, 2, 3, 4;
+

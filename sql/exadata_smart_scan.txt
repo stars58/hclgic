@@ -1,0 +1,253 @@
+smart scan
+===============
+To measure Smart Scan statistics systemwide
+
+select  inst.instance_name,
+        b.name,
+        a.value/1024/1024/1024 value
+from    gv$sysstat a, gv$statname b, gv$instance inst
+where   a.statistic# = b.statistic#
+and     b.name in
+                 ('cell physical IO bytes eligible for predicate offload',
+                        'cell physical IO interconnect bytes',
+                'cell physical IO interconnect bytes returned by Smart Scan')
+and     inst.inst_id=a.inst_id
+and     inst.inst_id=b.inst_id
+order by 1,2;
+
+To collect Smart Scan statistics from your own session
+
+select distinct event,total_waits,
+time_waited/100 wait_secs,average_wait/100 avg_wait_secs
+from v$session_event e, v$mystat s
+where event like 'cell%' and e.sid = s.sid
+
+select s.name, m.value/1024/1024 MB from v$sysstat s, v$mystat m
+where s.statistic# = m.statistic# and
+(s.name like 'physical%total bytes' OR s.name LIKE 'cell phys%'
+OR s.name like 'cell IO%')
+
+
+Measuring Smart Scan Statistics Systemwide
+
+To measure Smart Scan statistics systemwide, execute the script in Listing 15-1.
+
+Listing 15-1.  lst15-01-exass-system.sql
+SQL> select  inst.instance_name,
+        b.name,
+        a.value/1024/1024/1024 value
+from    gv$sysstat a, gv$statname b, gv$instance inst
+where   a.statistic# = b.statistic#
+and     b.name in
+                 ('cell physical IO bytes eligible for predicate offload',
+                        'cell physical IO interconnect bytes',
+                'cell physical IO interconnect bytes returned by Smart Scan')
+and     inst.inst_id=a.inst_id
+and     inst.inst_id=b.inst_id
+order by 1,2;
+
+
+In this query, we can see that for this database, each instance had almost 60 TB of data eligible for Smart Scan, approximately 28 TB transmitted over the storage interconnect, and about 25 TB returned via Smart Scan queries.
+
+
+Measuring Smart Scan for a Specific Session
+
+To measure Smart Scan statistics for a specific session, identify an Oracle session and execute the script in Listing 15-2.
+
+Listing 15-2.  lst15-02-exass-session.sql
+SQL> select sess.sid,
+       stat.name,
+       round(sess.value/1024/1024/1024,2) value
+from   v$sesstat sess,
+       v$statname stat
+where  stat.statistic# = sess.statistic#
+  and  sess.sid = '&&sid'
+  and  stat.name in
+                ('cell physical IO bytes eligible for predicate offload',
+               'cell physical IO interconnect bytes',
+                'cell physical IO interconnect bytes returned by Smart Scan')
+union
+select -1,
+        stat.name,
+       round(sum(sess.value)/1024/1024/1024,2) value
+from   v$sesstat sess,
+       v$statname stat
+where  stat.statistic# = sess.statistic#
+  and  sess.sid  in (select sid from v$px_session where qcsid='&&sid')
+  and   stat.name in
+                ('cell physical IO bytes eligible for predicate offload',
+                 'cell physical IO interconnect bytes',
+               'cell physical IO interconnect bytes returned by Smart Scan')
+group by stat.name
+order by 1 desc,2;
+
+Measuring Smart Scan Statistics from AWR
+select stime,icgb,eliggb,ssgb from (
+        select  distinct
+                 to_char(snap.begin_interval_time,'DD-MON-RR HH24:MI') stime,
+                snaps.icbytes/1024/1024/1024 icgb,
+                snaps.eligbytes/1024/1024/1024 eliggb,
+                snaps.ssbytes/1024/1024/1024 ssgb,
+                myrank
+        from (
+                select ss1.snap_id,
+                 (sum(ss1.value) - lag(sum(ss1.value),1,0) over (order by ss1.snap_id)) icbytes,
+                 (sum(ss2.value) - lag(sum(ss2.value),1,0) over (order by ss2.snap_id))
+                                                                                 eligbytes,
+                 (sum(ss3.value) - lag(sum(ss3.value),1,0) over (order by ss3.snap_id)) ssbytes,
+                        rank() over (order by ss1.snap_id) myrank
+from
+     dba_hist_sysstat ss1,
+     dba_hist_sysstat ss2,
+     dba_hist_sysstat ss3
+where ss1.snap_id=ss2.snap_id
+and ss2.snap_id=ss3.snap_id
+and ss1.snap_id between &&snap_low-1 and &&snap_hi
+and ss2.dbid=ss1.dbid
+and ss3.dbid=ss2.dbid
+and ss1.stat_name='cell physical IO interconnect bytes'
+and ss2.stat_name='cell physical IO bytes eligible for predicate offload'
+and ss3.stat_name='cell physical IO interconnect bytes returned by Smart Scan'
+group by ss1.snap_id,ss2.snap_id,ss3.snap_id
+       order by ss1.snap_id) snaps,
+       dba_hist_snapshot snap
+where snap.snap_id=snaps.snap_id
+       order by 1)
+where myrank>1;
+
+
+
+ASM disk detail
+-------------------
+col name format a12 head 'Disk Group'
+col total_mb format 999999999 head 'Total MB|Raw'
+col free_mb format 999999999 head 'Free MB|Raw'
+col useable_mb format 999999999 head 'Free MB|Usabllsit cell
+e'
+col cdisks format 9999 head 'Cell|Disks1'
+
+select a.name,a.total_mb,a.free_mb,a.type,
+a.total_mb/2 avail_mb,
+a.free_mb/2 usable_mb,
+count(b.path) cdisks
+from v$asm_diskgroup a,v$asm_disk b
+where a.group_number=b.group_number
+group by a.name,a.total_mb,a.free_mb,a.type
+order by 2,1
+
+select a.name, b.path
+from v$asm_diskgroup a,v$asm_disk b
+where a.group_number=b.group_number
+
+cellcli -e list griddisk attributes name,asmDiskGroupName,asmDiskname
+dcli -g ./cell_group cellcli -e list griddisk attributes name,size
+
+1) execute the following query to show how many grid disks are used per storage cell per ASM disk group:
+select a.name,b.failgroup,count(*) cnt
+    from v$asm_diskgroup a, v$asm_disk b
+    where a.group_number=b.group_number
+    group by a.name,b.failgroup
+
+2) validate your OCR backup using the ocrconfig –showbackup command
+/u01/app/11.2.0.3/grid/bin/ocrconfig -showbackup
+
+3) validate the health of your OCR file using the ocrcheck 
+/u01/app/11.2.0.3/grid/bin/ocrcheck
+/u01/app/11.2.0.3/grid/bin/crsctl query css votedisk
+
+
+storage cell
+--------------
+shows how dcli and CellCLI commands can be used together to report the status of all storage cells in a half rack cluster-
+ dcli -g /root/cell_group -l root cellcli -e "list cell"
+
+list lun where disktype='flashdisk'
+list alerthistory
+LIST ALERTHISTORY WHERE severity = 'critical' 
+Display the current metric values for a cell. 
+ CellCLI> LIST METRICCURRENT WHERE objectType = 'CELLDISK'
+
+
+
+/etc/init.d/celld status
+
+monitoring cell storage
+=======================
+4) To determine which databases are generating the most I/O load
+dcli -g ./cell_group "cellcli -e list metriccurrent where name=\'DB_IO_LOAD\'"
+
+To measure the small and large I/O waits per resource consumer group, use the CT_IO_WT_.*_RQ metrics with the following dcli command:
+dcli -g ./cell_group "cellcli -e list metriccurrent where objectType=\'IORM_CATEGORY\'
+
+
+SELECT
+        cellname cv_cellname
+      , CAST(extract(xmltype(confval), '/cli-output/cell/releaseVersion/text()') AS VARCHAR2(20))  cv_cellVersion
+      , CAST(extract(xmltype(confval), '/cli-output/cell/flashCacheMode/text()') AS VARCHAR2(20))  cv_flashcachemode
+      , CAST(extract(xmltype(confval), '/cli-output/cell/cpuCount/text()')       AS VARCHAR2(10))  cpu_count
+      , CAST(extract(xmltype(confval), '/cli-output/cell/upTime/text()')         AS VARCHAR2(20))  uptime
+      , CAST(extract(xmltype(confval), '/cli-output/cell/kernelVersion/text()')  AS VARCHAR2(30))  kernel_version
+      , CAST(extract(xmltype(confval), '/cli-output/cell/makeModel/text()')      AS VARCHAR2(50))  make_model
+    FROM
+       v$cell_config  -- gv$ isn't needed, all cells should be visible in all instances
+   WHERE
+       conftype = 'CELL'
+   ORDER BY
+      
+#  identify unassigned Exadata grid disks to use as your disk group disks.
+ list griddisk attributes name,asmDiskGroupName,asmDiskname where asmDiskGroupName=\'\'
+
+# Displaying ASM Partner Disk Relationships on Exadata
+SELECT dg.name,
+    d.disk_number "Disk#",
+    d.path disk_path,
+    p.number_kfdpartner ,
+    pd.path partner_path
+    FROM x$kfdpartner p,
+    v$asm_disk d,
+    v$asm_disk pd,
+    v$asm_diskgroup dg
+   WHERE p.disk=d.disk_number
+   and p.grp=d.group_number
+   and p.number_kfdpartner = pd.disk_number
+   and p.grp=pd.group_number
+   and d.group_number=dg.group_number
+   and dg.name='DATA_CM01'
+   and d.path like '%DATA_CD_03%'
+   ORDER BY 1, 2, 3;
+
+# Measuring Your ASM Extent Balance
+select distinct name,
+    maxtpd, mintpd, maxfpd, minfpd,
+    round(100*((maxtpd-mintpd)/maxfpd),2) var1,
+    round(100*((maxfpd-minfpd)/maxfpd),2) var2
+    from (
+    select dg.name,
+    dg.total_mb tpdg,
+    dg.free_mb fpdg,
+    d.total_mb tpd,
+    d.free_mb fpd,
+   max(d.total_mb) over (partition by dg.name) maxtpd,
+   min(d.total_mb) over (partition by dg.name) mintpd,
+   max(d.free_mb) over (partition by dg.name) maxfpd,
+   min(d.free_mb) over (partition by dg.name) minfpd
+   from v$asm_diskgroup dg, v$asm_disk d
+   where dg.group_number=d.group_number)
+
+#  Performing an Exadata Health Check Using exachk
+conduct a comprehensive Exadata health check on your Exadata Database Machine to validate your hardware, firmware, and configuration
+./exachk -a
+
+# Collecting RAID Storage Information Using the MegaCLI utility
+/opt/MegaRAID/MegaCli/MegaCli64 -PDList –aALL
+/opt/MegaRAID/MegaCli/MegaCli64 -v
+
+#Administering the Storage Cell Network Using ipconf
+validate a cell.conf network configuration file by running the ipconf –verify 
+
+# Diagnosing Your InfiniBand Network
+health check on your Exadata InfiniBand network to validate that the components are functioning as expected.
+/usr/bin/ibdiagnet
+/usr/sbin/ibqueryerrors.pl
+3.To check your InfiniBand network performance
+opt/oracle.SupportTools/ibdiagtools/infinicheck 

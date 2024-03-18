@@ -1,0 +1,19 @@
+allocate channel for maintenance type disk;
+run
+{
+delete noprompt obsolete ;
+
+allocate channel dsk1 type disk;
+allocate channel dsk2 type disk;
+backup format 'Y:\sgppbtcrsdb1\ora_%U.rbf' incremental level 0
+database maxsetsize 10000M filesperset 10;
+sql "alter system archive log current";
+sql "alter system switch logfile";
+sql "alter system switch logfile";
+sql "alter system switch logfile";
+backup format 'Y:\sgppbtcrsdb1\arc_%U.rbf' archivelog all delete input;
+
+delete noprompt obsolete ;
+
+backup current controlfile format 'Y:\sgppbtcrsdb1\ctl_%U.rbf';
+}

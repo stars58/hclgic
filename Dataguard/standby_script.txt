@@ -1,0 +1,60 @@
+alter session set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+
+select process,status,sequence#,thread# ,
+(select completion_time from v$archived_log b
+where a.thread#=b.thread# and a.sequence#=b.sequence#)
+from v$managed_standby a
+where sequence# >0
+/
+
+
+select force_logging from v$database;
+
+----------------------------------------------------------
+
+On the primary server, check the latest archived redo log and force a log switch.
+
+ALTER SESSION SET nls_date_format='DD-MON-YYYY HH24:MI:SS';
+
+sELECT thread#, sequence#, first_time, next_time, applied
+FROM   v$archived_log
+where first_time > sysdate -1/24
+ORDER BY thread#,sequence#
+
+ALTER SYSTEM SWITCH LOGFILE;
+Check the new archived redo log has arrived at the standby server and been applied.
+
+ALTER SESSION SET nls_date_format='DD-MON-YYYY HH24:MI:SS';
+
+SELECT thread#,sequence#, first_time, next_time, applied
+FROM   v$archived_log
+where first_time > sysdate -1/24
+ORDER BY thread#, sequence#;
+
+----------------------------------------------------------
+
+select     ds.dest_id id
+ ,     ad.status
+ ,     ds.database_mode db_mode
+ ,     ad.archiver type
+ ,     ds.recovery_mode
+ ,     ds.protection_mode
+ ,     ds.standby_logfile_count "SRLs"
+ ,     ds.standby_logfile_active active
+ ,     ds.archived_seq#
+ from     v$archive_dest_status     ds
+ ,     v$archive_dest          ad
+ where     ds.dest_id = ad.dest_id
+ and     ad.status != 'INACTIVE'
+ order by
+      ds.dest_id
+
+-------------------------------------------------------------
+
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
+FROM
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE
+ARCH.THREAD# = APPL.THREAD#
+ORDER BY 1;

@@ -1,0 +1,28 @@
+-- initialization
+alter database archivelog
+alter database flashback on;
+
+-- create restore point
+CREATE RESTORE POINT before_upgrade GUARANTEE FLASHBACK DATABASE;
+
+-- check 
+SELECT NAME, SCN, TIME, DATABASE_INCARNATION# DI,GUARANTEE_FLASHBACK_DATABASE, STORAGE_SIZE
+FROM V$RESTORE_POINT
+
+-- mount database and flash back
+FLASHBACK DATABASE TO RESTORE POINT ‘BEFORE_UPGRADE’;
+ALTER DATABASE OPEN RESETLOGS;
+
+-- drop flashback
+drop restore point before_upgrade;
+
+
+-- check disk
+select 
+   name,
+   to_char(space_limit, '999,999,999,999') as space_limit,
+   to_char(space_limit - space_used + space_reclaimable,
+   '999,999,999,999') as space_available,
+   round((space_used - space_reclaimable)/space_limit * 100, 1) as pct_full
+from 
+   v$recovery_file_dest;

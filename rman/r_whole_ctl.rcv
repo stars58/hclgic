@@ -1,0 +1,10 @@
+startup nomount;
+set DBID=1246996935;
+run {
+   set controlfile autobackup format for device type disk to 'c:\oracle\backup\%F';
+   restore controlfile from autobackup;
+   alter database mount;
+   restore database;
+   recover database;
+}
+alter database open;

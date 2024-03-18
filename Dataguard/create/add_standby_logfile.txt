@@ -1,0 +1,22 @@
+set linesize 200;
+set pagesize 0;
+set feedback off;
+
+spool c:\temp\addstandby.sql;
+select 'alter database add standby logfile ''' || substr(member,1,instr(member,'\',-1)) ||  'S' || substr(member,instr(member,'\',-1)+1) || ''' size ' || bytes ||';' from v$logfile a, v$log b
+where a.group#=b.group#
+and member like '%01%'
+order by 1;
+spool off;
+
+alter database add standby logfile
+group 11 ('I:\ORACLE\ORADATA\OPERA\sredo11_01.rdo') size 100M
+,group 12 ('I:\ORACLE\ORADATA\OPERA\sredo12_01.rdo') size 100M
+,group 13 ('I:\ORACLE\ORADATA\OPERA\sredo13_01.rdo') size 100M
+,group 14 ('I:\ORACLE\ORADATA\OPERA\sredo14_01.rdo') size 100M
+,group 15 ('I:\ORACLE\ORADATA\OPERA\sredo15_01.rdo') size 100M
+,group 16 ('I:\ORACLE\ORADATA\OPERA\sredo16_01.rdo') size 100M
+,group 17 ('I:\ORACLE\ORADATA\OPERA\sredo17_01.rdo') size 100M
+,group 18 ('I:\ORACLE\ORADATA\OPERA\sredo18_01.rdo') size 100M
+,group 19 ('I:\ORACLE\ORADATA\OPERA\sredo19_01.rdo') size 100M
+,group 20 ('I:\ORACLE\ORADATA\OPERA\sredo20_01.rdo') size 100M
