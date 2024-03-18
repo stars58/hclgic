@@ -1,6 +1,6 @@
 #!/bin/bash -u
 # This script is for checking database performance
-#  Owner:   Vincent Ng
+#  Owner:  
 
 
 workdir=$( echo $0|sed 's/\/beholder_db_performance.sh//' )
