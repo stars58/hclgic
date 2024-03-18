@@ -1,7 +1,7 @@
 set JAVA_HOME=C:\Tools\sqldeveloper\jdk\jre\
 set PATH=%JAVA_HOME%bin;%PATH%;
 
-set USRID=mainuser/passw0rd
+set USRID=user/passwrd
 set CONN=(galaxy,glxypac,jwpac,master,pac,sgcloud,spmaster,sptshub,sptspac,venetian,wkcd,wkcdpac)
 )
 
