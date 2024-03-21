@@ -1,0 +1,1304 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<displays>
+<display id="3d7edfdd-0189-1000-8001-0a02282a5613" type="" style="Chart" enable="true">
+	<name><![CDATA[Tablespace growth]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[LINE_VERT_ABS]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(sp.begin_interval_time,'yyyy-mm-dd') "DATE",ts.NAME,
+sum(tsu.TABLESPACE_USEDSIZE)*8192/1024/1024/1024
+from dba_hist_tbspc_space_usage tsu,v$tablespace ts, dba_hist_snapshot sp
+where tsu.TABLESPACE_ID=ts.TS#
+and tsu.snap_id=sp.snap_id
+and ts.NAME not like 'UNDOTBS%'
+and ts.name not in ('TEMP')
+group by to_char(sp.begin_interval_time,'yyyy-mm-dd'),ts.NAME
+order by 1,2]]></sql>
+	</query>
+</display>
+<display id="5c625585-0189-1000-8007-c0a856197fbb" type="" style="Table" enable="true">
+	<name><![CDATA[DB Perf - Sysmetic 7d1h]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT      * FROM 
+     (SELECT 
+         SNAP_ID, INSTANCE_NUMBER, TO_CHAR(END_TIME,'DD-MON-YY') SYS_DATE, TO_CHAR(ROUND(END_TIME,'HH'),'HH24:MI') SYS_TIME, METRIC_NAME, MAXVAL
+     FROM 
+         DBA_HIST_SYSMETRIC_SUMMARY
+         where begin_time> sysdate-7)
+ pivot
+    ( MAX(ROUND(MAXVAL)) 
+    FOR METRIC_NAME IN ('Current Logons Count' ,'Process Limit %','Session Limit %', 'Response Time Per Txn','Average Active Sessions' ,
+ 'Database CPU Time Ratio', 'Database Wait Time Ratio',
+ 'Executions Per Sec', 'Executions Per Txn',
+ 'SQL Service Response Time',
+'Physical Reads Per Sec','Physical Writes Per Sec',
+		'Redo Generated Per Sec', 'Host CPU Utilization (%)'))
+ORDER BY SNAP_ID]]></sql>
+	</query>
+</display>
+<display id="5ce2b276-0189-1000-8007-c0a856195167" type="" style="plsql-dbms_output" enable="true">
+	<name><![CDATA[Redo generation - Heatmap]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[DECLARE
+  myMaxDay NUMBER;
+  myMaxHour NUMBER;
+  myDBName VARCHAR2(16);
+
+  -- dec2hex Function from http://www.orafaq.com/wiki/Hexadecimal
+  FUNCTION dec2hex (N in number) RETURN varchar2 IS
+    hexval varchar2(64);
+    N2     number := N;
+    digit  number;
+    hexdigit  char;
+  BEGIN
+    while ( N2 > 0 ) loop
+       digit := mod(N2, 16);
+       if digit > 9 then 
+         hexdigit := chr(ascii('A') + digit - 10);
+       else
+         hexdigit := to_char(digit);
+       end if;
+       hexval := hexdigit || hexval;
+       N2 := trunc( N2 / 16 );
+    end loop;
+    return hexval;
+  END dec2hex;
+
+  FUNCTION DataCell ( P_Value NUMBER, P_Max NUMBER) RETURN VARCHAR2 IS
+   myReturn VARCHAR2(256);
+   myColorVal NUMBER;
+   myColorHex VARCHAR2(16);
+  BEGIN
+
+    -- Determine shade of red the P_Value should be compared to Solid Red for P_Max
+    -- Higher HEX values for G,B render as lighter colors
+    myColorVal := ROUND( 255-FLOOR(255 * (P_VALUE / P_MAX)));
+    myColorHex := LPAD(TRIM(dec2hex(myColorVal)) ,2,'0');
+    IF P_Value >= P_Max THEN
+      myColorHex := '00';
+    END IF;
+
+    myReturn := '<TD STYLE="background-color: #FF'||
+                myColorHex||
+                myColorHex||
+                '; font-family: monospace; text-align: right; border-left: 1px solid black; border-top: 1px solid black">';
+    myReturn := myReturn ||TO_CHAR(P_Value,'9999.9');
+    myReturn := myReturn ||'</TD>';
+
+    RETURN myReturn;
+  END DataCell;
+
+BEGIN
+
+  DBMS_OUTPUT.ENABLE(1000000);
+
+  SELECT ROUND(MAX(ROUND(SUM(blocks*block_size)/1024/1024/1024)),1)
+    INTO myMaxDay
+    FROM v$archived_log
+    WHERE trunc(FIRST_TIME) >= trunc(sysdate - 31)
+  GROUP BY TO_CHAR(first_time,'YYYY-MM-DD');
+
+  SELECT ROUND(MAX(ROUND(SUM(blocks*block_size)/1024/1024/1024)),1)
+    INTO myMaxHour
+    FROM v$archived_log
+    WHERE trunc(FIRST_TIME) >= trunc(sysdate - 31)
+  GROUP BY TO_CHAR(first_time,'YYYY-MM-DD HH24');
+  
+  SELECT NAME INTO myDBName FROM V$DATABASE;
+
+  DBMS_OUTPUT.PUT_LINE('<HTML>');
+  DBMS_OUTPUT.PUT_LINE('<H1>Archived Log Heat Map by Hourly and Daily Redo GB - '||myDBName||'  - Past 31 days</H1>');
+  DBMS_OUTPUT.PUT_LINE('<TABLE STYLE="border: 1px solid black">');
+  DBMS_OUTPUT.PUT_LINE('<TR>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">Date / Hour</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">00</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">01</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">02</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">03</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">04</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">05</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">06</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">07</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">08</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">09</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">10</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">11</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">12</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">13</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">14</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">15</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">16</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">17</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">18</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">19</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">20</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">21</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">22</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">23</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TD STYLE="font-family: monospace; font-weight: bold; background-color:#DEDEDE">Total</TD>');
+  DBMS_OUTPUT.PUT_LINE('<TR>');
+
+  FOR cur IN (
+    select trunc(first_time) AS Day,
+    sum(DECODE(to_char(first_time, 'HH24'), '00', blocks*block_size/1024/1024/1024, 0)) AS "00",
+    sum(DECODE(to_char(first_time, 'HH24'), '01', blocks*block_size/1024/1024/1024, 0)) AS "01",
+    sum(DECODE(to_char(first_time, 'HH24'), '02', blocks*block_size/1024/1024/1024, 0)) AS "02",
+    sum(DECODE(to_char(first_time, 'HH24'), '03', blocks*block_size/1024/1024/1024, 0)) AS "03",
+    sum(DECODE(to_char(first_time, 'HH24'), '04', blocks*block_size/1024/1024/1024, 0)) AS "04",
+    sum(DECODE(to_char(first_time, 'HH24'), '05', blocks*block_size/1024/1024/1024, 0)) AS "05",
+    sum(DECODE(to_char(first_time, 'HH24'), '06', blocks*block_size/1024/1024/1024, 0)) AS "06",
+    sum(DECODE(to_char(first_time, 'HH24'), '07', blocks*block_size/1024/1024/1024, 0)) AS "07",
+    sum(DECODE(to_char(first_time, 'HH24'), '08', blocks*block_size/1024/1024/1024, 0)) AS "08",
+    sum(DECODE(to_char(first_time, 'HH24'), '09', blocks*block_size/1024/1024/1024, 0)) AS "09",
+    sum(DECODE(to_char(first_time, 'HH24'), '10', blocks*block_size/1024/1024/1024, 0)) AS "10",
+    sum(DECODE(to_char(first_time, 'HH24'), '11', blocks*block_size/1024/1024/1024, 0)) AS "11",
+    sum(DECODE(to_char(first_time, 'HH24'), '12', blocks*block_size/1024/1024/1024, 0)) AS "12",
+    sum(DECODE(to_char(first_time, 'HH24'), '13', blocks*block_size/1024/1024/1024, 0)) AS "13",
+    sum(DECODE(to_char(first_time, 'HH24'), '14', blocks*block_size/1024/1024/1024, 0)) AS "14",
+    sum(DECODE(to_char(first_time, 'HH24'), '15', blocks*block_size/1024/1024/1024, 0)) AS "15",
+    sum(DECODE(to_char(first_time, 'HH24'), '16', blocks*block_size/1024/1024/1024, 0)) AS "16",
+    sum(DECODE(to_char(first_time, 'HH24'), '17', blocks*block_size/1024/1024/1024, 0)) AS "17",
+    sum(DECODE(to_char(first_time, 'HH24'), '18', blocks*block_size/1024/1024/1024, 0)) AS "18",
+    sum(DECODE(to_char(first_time, 'HH24'), '19', blocks*block_size/1024/1024/1024, 0)) AS "19",
+    sum(DECODE(to_char(first_time, 'HH24'), '20', blocks*block_size/1024/1024/1024, 0)) AS "20",
+    sum(DECODE(to_char(first_time, 'HH24'), '21', blocks*block_size/1024/1024/1024, 0)) AS "21",
+    sum(DECODE(to_char(first_time, 'HH24'), '22', blocks*block_size/1024/1024/1024, 0)) AS "22",
+    sum(DECODE(to_char(first_time, 'HH24'), '23', blocks*block_size/1024/1024/1024, 0)) AS "23",
+    sum(blocks*block_size/1024/1024/1024) as "Total"
+    FROM v$archived_log
+    WHERE trunc(FIRST_TIME) >= trunc(sysdate - 31)
+    GROUP BY trunc(first_time)
+    ORDER BY TRUNC(FIRST_TIME) DESC
+  )
+  LOOP
+    DBMS_OUTPUT.PUT_LINE('<TR>');
+    DBMS_OUTPUT.PUT_LINE('<TD style="font-family: monospace; font-weight: bold; background-color:#DEDEDE">'||
+                         TO_CHAR(cur.Day,'DD-MON-YYYY')||'<EM></TD>');
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."00", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."01", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."02", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."03", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."04", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."05", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."06", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."07", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."08", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."09", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."10", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."11", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."12", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."13", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."14", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."15", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."16", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."17", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."18", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."19", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."20", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."21", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."22", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."23", myMaxHour) );
+    DBMS_OUTPUT.PUT_LINE( DataCell(cur."Total", myMaxDay) );
+    DBMS_OUTPUT.PUT_LINE('</TR>');
+  END LOOP;
+
+  DBMS_OUTPUT.PUT_LINE('</TABLE>');
+  DBMS_OUTPUT.PUT_LINE('</HTML>');
+
+END;]]></sql>
+	</query>
+</display>
+<display id="710000cd-0189-1000-8001-0a02282b911a" type="" style="Table" enable="true">
+	<name><![CDATA[Locks]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT DISTINCT S1.USERNAME || '@' || S1.MACHINE
+|| ' ( INST=' || S1.INST_ID || ' SID=' || S1.SID || ' ) IS BLOCKING '
+|| S2.USERNAME || '@' || S2.MACHINE || ' ( INST=' || S1.INST_ID || ' SID=' || S2.SID || ' ) ' AS BLOCKING_STATUS
+FROM GV$LOCK L1, GV$SESSION S1, GV$LOCK L2, GV$SESSION S2
+WHERE S1.SID=L1.SID AND S2.SID=L2.SID
+AND S1.INST_ID=L1.INST_ID AND S2.INST_ID=L2.INST_ID
+AND L1.BLOCK > 0 AND L2.REQUEST > 0
+AND L1.ID1 = L2.ID1 AND L1.ID2 = L2.ID2]]></sql>
+	</query>
+</display>
+<display id="7121c18c-0189-1000-800c-0a02282b911a" type="" style="Table" enable="true">
+	<name><![CDATA[ASH pivot rpt - last hr]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT to_char(sysmetric_history.sample_time,'DD-MM-YY HH24:mi') sample_time,
+  round(cpu/60,2) AS cpu,
+  round(bcpu/60,2) AS bcpu,
+  round(DECODE(SIGN((cpu+bcpu)/60-cpu_ora_consumed), -1, 0, ((cpu+bcpu)/60-cpu_ora_consumed)),2) AS cpu_ora_wait,
+  round(scheduler/60,2) AS scheduler,
+  round(uio/60,2) AS uio,
+  round(sio/60,2) AS sio,
+  round(concurrency/60,2) AS concurrency,
+  round(application/60,2) AS application,
+  round(COMMIT/60,2) AS COMMIT,
+  round(configuration/60,2) AS configuration,
+  round(administrative/60,2) AS administrative,
+  round(network/60,2) AS network,
+  round(queueing/60,2) AS queueing,
+  round(clust/60,2) AS clust,
+  round(other/60,2) AS other
+FROM
+  (SELECT
+     TRUNC(sample_time,'MI') AS sample_time,
+     DECODE(session_state,'ON CPU',DECODE(session_type,'BACKGROUND','BCPU','ON CPU'), wait_class) AS wait_class
+   FROM v$active_session_history
+   WHERE sample_time>sysdate-INTERVAL '1' HOUR
+   AND sample_time<=TRUNC(SYSDATE,'MI')) ash
+   PIVOT (COUNT(*) FOR wait_class IN ('ON CPU' AS cpu,'BCPU' AS bcpu,'Scheduler' AS scheduler,'User I/O' AS uio,'System I/O' AS sio,
+   'Concurrency' AS concurrency,'Application' AS application,'Commit' AS COMMIT,'Configuration' AS configuration,
+   'Administrative' AS administrative,'Network' AS network,'Queueing' AS queueing,'Cluster' AS clust,'Other' AS other)) ash,
+   (SELECT
+      TRUNC(begin_time,'MI') AS sample_time,
+      VALUE/100 AS cpu_ora_consumed
+    FROM v$sysmetric_history
+    WHERE GROUP_ID=2
+    AND metric_name='CPU Usage Per Sec') sysmetric_history
+WHERE ash.sample_time (+)=sysmetric_history.sample_time
+ORDER BY sample_time desc]]></sql>
+	</query>
+</display>
+<display id="7142e306-0189-1000-8012-0a02282b911a" type="" style="Table" enable="true">
+	<name><![CDATA[Sizing]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select  snaps.id, snaps.tm,round(snaps.dur),snaps.instances,
+        osstat.num_cpus CPUs,
+        round(osstat.num_cpus * dur * 60) cap,
+        round(((timemodel.dbt - lag(timemodel.dbt,1) over (order by snaps.id)))/1000000) dbt,
+        round(((timemodel.dbc - lag(timemodel.dbc,1) over (order by snaps.id)))/1000000) dbc,
+        round(((timemodel.bgc - lag(timemodel.bgc,1) over (order by snaps.id)))/1000000) bgc,
+        round(((timemodel.rmanc - lag(timemodel.rmanc,1) over (order by snaps.id)))/1000000) rmanc,
+        round((((timemodel.dbt - lag(timemodel.dbt,1) over (order by snaps.id)))/1000000)/dur/60) aas ,
+  (((timemodel.dbc - lag(timemodel.dbc,1) over (order by snaps.id)))/1000000) +
+          (((timemodel.bgc - lag(timemodel.bgc,1) over (order by snaps.id)))/1000000) totora ,
+        round(osstat.load) load        ,
+        ((osstat.busy_time - lag(osstat.busy_time,1) over (order by snaps.id)))/100 totos,
+            round(100*(((((timemodel.dbc - lag(timemodel.dbc,1) over (order by
+            snaps.id)))/1000000) +
+          (((timemodel.bgc - lag(timemodel.bgc,1) over (order by snaps.id)))/1000000)) /
+                (osstat.num_cpus * 60 * dur)),2) oracpupct,        round(100*((((timemodel.rmanc
+                    - lag(timemodel.rmanc,1) over (order by snaps.id)))/1000000) /
+                (osstat.num_cpus * 60 * dur)),2) rmancpupct,
+        round(100*((((osstat.busy_time - lag(osstat.busy_time,1) over (order by snaps.id)))/100) /
+                (osstat.num_cpus * 60 * dur)),3) oscpupct,
+        round(100*((((osstat.user_time - lag(osstat.user_time,1) over (order by snaps.id)))/100) /
+                (osstat.num_cpus * 60 * dur)),3) usrcpupct,
+        round(100*((((osstat.sys_time - lag(osstat.sys_time,1) over (order by snaps.id)))/100) /
+                (osstat.num_cpus * 60 * dur)),3) syscpupct,
+        round(100*((((osstat.iowait_time - lag(osstat.iowait_time,1) over (order by
+            snaps.id)))/100) /
+                (osstat.num_cpus * 60 * dur)),3) iowaitcpupct,
+        sysstat.logons_curr ,
+        round(((sysstat.logons_cum - lag (sysstat.logons_cum,1) over (order by snaps.id)))/dur/60)
+            logons_cum,
+        round(((sysstat.execs - lag (sysstat.execs,1) over (order by snaps.id)))/dur/60) execs
+ from
+ ( /* DBA_HIST_SNAPSHOT */
+ select distinct id,dbid,tm,instances,max(dur) over (partition by id) dur from (
+ select distinct s.snap_id id, s.dbid,
+    to_char(s.end_interval_time,'DD-MON-RR HH24:MI') tm,
+    count(s.instance_number) over (partition by snap_id) instances,
+    1440*((cast(s.end_interval_time as date) - lag(cast(s.end_interval_time as date),1) over
+        (order by s.snap_id))) dur
+ from   dba_hist_snapshot s,
+    v$database d
+ where s.dbid=d.dbid)
+) snaps,
+ ( /* Data from DBA_HIST_OSSTAT */
+  select  *
+        from
+        (select snap_id,dbid,stat_name,value from
+        dba_hist_osstat
+  ) pivot
+  (sum(value) for (stat_name)
+        in ('NUM_CPUS' as num_cpus,'BUSY_TIME' as busy_time,
+            'LOAD' as load,'USER_TIME' as user_time, 'SYS_TIME' as sys_time, 'IOWAIT_TIME' as
+                iowait_time))
+  ) osstat,
+  ( /* DBA_HIST_TIME_MODEL */
+   select * from
+        (select snap_id,dbid,stat_name,value from
+        dba_hist_sys_time_model
+   ) pivot
+   (sum(value) for (stat_name)
+        in ('DB time' as dbt, 'DB CPU' as dbc, 'background cpu time' as bgc,
+             'RMAN cpu time (backup/restore)' as rmanc))
+  ) timemodel,
+  ( /* DBA_HIST_SYSSTAT */
+    select * from
+        (select snap_id, dbid, stat_name, value from
+        dba_hist_sysstat
+    ) pivot
+    (sum(value) for (stat_name) in
+        ('logons current' as logons_curr, 'logons cumulative' as logons_cum, 'execute count' as
+            execs))
+  ) sysstat
+where dur > 0
+and snaps.id=osstat.snap_id
+and snaps.dbid=osstat.dbid
+and snaps.id=timemodel.snap_id
+and snaps.dbid=timemodel.dbid
+and snaps.id=sysstat.snap_id
+and snaps.dbid=sysstat.dbid
+order by id desc]]></sql>
+	</query>
+</display>
+<display id="7614559a-0189-1000-8001-0a02282b487d" type="" style="Table" enable="true">
+	<name><![CDATA[Rman backup status]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select 
+ start_time,STATUS,INPUT_TYPE,
+ round(ELAPSED_SECONDS/3600,2) hrs,
+ ROUND(INPUT_BYTES/1024/1024/1024,2) SUM_IN_GB,
+ ROUND(OUTPUT_BYTES/1024/1024/1024,2) SUM_OUT_GB,
+ ROUND(COMPRESSION_RATIO,2) COMPRESSION,TIME_TAKEN_DISPLAY
+ FROM V$RMAN_BACKUP_JOB_DETAILS where trunc(start_time)>=trunc(sysdate)-10
+ order by SESSION_KEY DESC]]></sql>
+	</query>
+</display>
+<display id="768f1c69-0189-1000-8001-0a02282be178" type="" style="Chart" enable="true">
+	<name><![CDATA[ASH per wait class - last Nd]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[60.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[AREA_VERT_STACK]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(end_time,'mm-dd hh24') snap_time 
+ , wait_class 
+ , sum(pSec) avg_sess 
+ from 
+ (select end_time 
+ , wait_class 
+ , p_tmfg/1000000/ela pSec 
+ from ( 
+ select round(s.end_interval_time,'hh24') end_time 
+ , (cast(s.end_interval_time as date) - cast(s.begin_interval_time as date))*24*3600 ela 
+ , s.snap_id 
+ , wait_class 
+ , e.event_name 
+ , case when s.begin_interval_time = s.startup_time 
+ then e.time_waited_micro_fg 
+ else e.time_waited_micro_fg 
+ - lag(time_waited_micro_fg) over (partition by event_id 
+ , e.dbid 
+, e.instance_number 
+ , s.startup_time 
+ order by e.snap_id) 
+ end p_tmfg 
+ from dba_hist_snapshot s 
+ , dba_hist_system_event e 
+ where s.dbid = e.dbid 
+ and s.instance_number = e.instance_number 
+ and s.snap_id = e.snap_id 
+ and s.end_interval_time > sysdate-:day
+ and s.end_interval_time < sysdate
+ and e.wait_class != 'Idle' 
+ union all 
+ select trunc(s.end_interval_time,'hh24') end_time 
+ , (cast(s.end_interval_time as date) - cast(s.begin_interval_time as date))*24*3600 ela 
+ , s.snap_id 
+ , t.stat_name wait_class 
+ , t.stat_name event_name 
+ , case when s.begin_interval_time = s.startup_time 
+ then t.value 
+ else t.value 
+ - lag(value) over (partition by stat_id 
+ , t.dbid 
+ , t.instance_number 
+ , s.startup_time 
+ order by t.snap_id) 
+ end p_tmfg 
+ from dba_hist_snapshot s 
+ , dba_hist_sys_time_model t 
+ where s.dbid = t.dbid 
+ and s.instance_number = t.instance_number 
+ and s.snap_id = t.snap_id 
+ and s.end_interval_time > sysdate -1
+ and s.end_interval_time < sysdate
+ and t.stat_name = 'DB CPU')) 
+ group by to_char(end_time,'mm-dd hh24'), wait_class 
+ order by to_char(end_time,'mm-dd hh24'), wait_class]]></sql>
+		<binds>
+			<bind id="day">
+				<prompt><![CDATA[day]]></prompt>
+				<tooltip><![CDATA[day]]></tooltip>
+				<value><![CDATA[1]]></value>
+				<bracket><![CDATA[null]]></bracket>
+			</bind>
+		</binds>
+	</query>
+</display>
+<display id="769174cf-0189-1000-8003-0a02282be178" type="" style="Chart" enable="true">
+	<name><![CDATA[ASH CPU by inst - last 12 hr]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[60.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[LINE_VERT_ABS_2Y]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(end_interval_time,'mm-dd hh24') snap_time
+ , instance_number
+ , avg(v_ps) pSec
+ from (
+ select end_interval_time
+ , instance_number
+ , v/ela v_ps
+ from (
+ select round(s.end_interval_time,'hh24') end_interval_time
+ , s.instance_number
+ , (case when s.begin_interval_time = s.startup_time
+ then value
+ else value - lag(value,1) over (partition by sy.stat_id
+ , sy.dbid
+ , s.instance_number
+ , s.startup_time
+ order by sy.snap_id)
+ end)/1000000 v
+ , (cast(s.end_interval_time as date) - cast(s.begin_interval_time as date))*24*3600 ela
+ from dba_hist_snapshot s
+ , dba_hist_sys_time_model sy
+ where s.dbid = sy.dbid
+ and s.instance_number = sy.instance_number
+ and s.snap_id = sy.snap_id
+ and sy.stat_name = 'DB time'
+ and s.end_interval_time > sysdate -1
+ and s.end_interval_time < sysdate)) 
+ group by to_char(end_interval_time,'mm-dd hh24'), instance_number
+ having avg(v_ps) is not null
+ order by to_char(end_interval_time,'mm-dd hh24'), instance_number]]></sql>
+	</query>
+</display>
+<display id="7695de8e-0189-1000-8007-0a02282be178" type="" style="Table" enable="true">
+	<name><![CDATA[sql elaped tim e- last 3 hrs]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(round(end_interval_time,'hh24'),'mm-dd hh24') snap_time
+ , sq.sql_id, dbms_lob.substr(sql_text, 100, 1) 
+ , round(sum(elapsed_time_delta/1000000)/decode(sum(executions_delta),0,null,sum(executions_delta)),3)
+avg_elapsed
+ from dba_hist_sqlstat sq
+ , dba_hist_snapshot s ,dba_hist_sqltext h
+ where 
+ --sq.sql_id (+) = :sql_id
+  sq.dbid (+) = s.dbid
+ and sq.sql_id= h.sql_id (+) 
+ and sq.instance_number (+) = s.instance_number
+ and sq.snap_id (+) = s.snap_id
+ and s.end_interval_time > sysdate -3/24
+ and s.end_interval_time < sysdate
+ group by to_char(round(end_interval_time,'hh24'),'mm-dd hh24'), sq.sql_id, dbms_lob.substr(sql_text, 100, 1) 
+ order by to_char(round(end_interval_time,'hh24'),'mm-dd hh24'), 3 desc]]></sql>
+	</query>
+</display>
+<display id="7cd306b3-0189-1000-8009-c0a85619d0cd" type="" style="Table" enable="true">
+	<name><![CDATA[Sysmetric - current]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select  a.inst_id, to_char(b.begin_time,'hh24:mi') start_time, to_char(b.end_time,'hh24:mi') end_time, a.metric_name, 
+round(a.value,3) value, round(b.average) avg, round(b.maxval) maxval, round(b.standard_deviation) standard_deviation 
+from SYS.GV_$SYSMETRIC a, GV$SYSMETRIC_SUMMARY b
+where a.metric_id=b.metric_id
+and a.inst_id=b.inst_id
+and a.METRIC_NAME in  ( 
+ 'CPU Usage Per Txn',
+'Current Logons Count',
+ 'Database CPU Time Ratio',
+ 'Database Wait Time Ratio',
+'Database Time Per Sec',
+ 'Executions Per Sec',
+ 'Executions Per Txn',
+ 'Response Time Per Txn',
+ 'SQL Service Response Time',
+'Physical Reads Per Sec',
+'Physical Writes Per Sec',
+ 'User Transaction Per Sec',
+'Redo Generated Per Sec',
+ 'Host CPU Utilization (%)',
+'Average Active Sessions' ,
+'Network Traffic Volume Per Sec'
+)
+and a.group_id=2
+order by inst_id, metric_name]]></sql>
+	</query>
+</display>
+<display id="858b8d7f-0189-1000-8001-0a022835d225" type="" style="Table" enable="true">
+	<name><![CDATA[Account status]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select username,account_status,profile, expiry_date, 
+case account_status
+  when 'OPEN' then
+    case when (expiry_date-sysdate) > 0 then to_char(round(expiry_date-sysdate))
+         when expiry_date is null then 'UNLIMITED'
+         else 'EXPIRED' 
+    end
+  else
+       'LOCKED'
+  end
+Days_Left 
+from dba_users order by 1,2]]></sql>
+	</query>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[account profiles]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select * from dba_profiles
+where profile = :PROFILE]]></sql>
+			<binds>
+				<bind id="PROFILE">
+					<prompt><![CDATA[PROFILE]]></prompt>
+					<tooltip><![CDATA[PROFILE]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+</display>
+<display id="9cc0aabc-0189-1000-8003-c0a856152358" type="" style="Chart" enable="true">
+	<name><![CDATA[ASH chart - last h1]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[60.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[AREA_VERT_STACK]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT
+     TRUNC(sample_time,'MI') AS sample_time,
+     DECODE(session_state,'ON CPU',DECODE(session_type,'BACKGROUND','BCPU','ON CPU'), wait_class) AS wait_class,
+     COUNT(*) 
+   FROM v$active_session_history
+   WHERE sample_time>sysdate-INTERVAL '1' HOUR
+   AND sample_time<=TRUNC(SYSDATE,'MI')
+   group by    TRUNC(sample_time,'MI'),
+   DECODE(session_state,'ON CPU',DECODE(session_type,'BACKGROUND','BCPU','ON CPU'), wait_class)
+   order by 1]]></sql>
+	</query>
+</display>
+<display id="ab031fe2-0189-1000-8005-0a02282ebfcf" type="" style="Chart" enable="true">
+	<name><![CDATA[SQL Elapsed Time by SQL_ID]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[60.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[BAR_HORIZ_CLUST]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(round(end_interval_time,'hh24'),'mm-dd hh24') snap_time 
+ , sql_id 
+ , sum(elapsed_time_delta/1000000)/decode(sum(executions_delta),0,null,sum(executions_delta)) 
+avg_elapsed 
+ from dba_hist_sqlstat sq 
+ , dba_hist_snapshot s 
+ where sq.sql_id (+) = :SQL_ID 
+ and sq.dbid (+) = s.dbid 
+ and sq.instance_number (+) = s.instance_number 
+ and sq.snap_id (+) = s.snap_id 
+ and s.end_interval_time > sysdate -1
+ and s.end_interval_time < sysdate
+ group by to_char(round(end_interval_time,'hh24'),'mm-dd hh24'), sql_id 
+ order by to_char(round(end_interval_time,'hh24'),'mm-dd hh24')]]></sql>
+		<binds>
+			<bind id="SQL_ID">
+				<prompt><![CDATA[SQL_ID]]></prompt>
+				<tooltip><![CDATA[SQL_ID]]></tooltip>
+				<value><![CDATA[4031fbykds8bg]]></value>
+				<bracket><![CDATA[null]]></bracket>
+			</bind>
+		</binds>
+	</query>
+</display>
+<display id="be4b7f60-0189-1000-8006-0a02282e7a32" type="" style="Chart" enable="true">
+	<name><![CDATA[AWR Drilldown Report]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[30.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<DATA_MAP_COLUMNS><![CDATA[\,"SNAP_ID"]]></DATA_MAP_COLUMNS>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[210.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[BAR_VERT_STACK]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<DATA_MAP_COLNAMES><![CDATA[\,"AVG_SESS","SNAP_ID","SNAP_TIME","WAIT_CLASS"]]></DATA_MAP_COLNAMES>
+		<DATA_MAP_SERIES><![CDATA[\,"WAIT_CLASS"]]></DATA_MAP_SERIES>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<DATA_MAP_VALUES><![CDATA[\,"AVG_SESS"]]></DATA_MAP_VALUES>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(end_time,'mm-dd hh24') snap_time ,snap_id
+ , wait_class 
+ , sum(pSec) avg_sess 
+ from 
+ (select end_time 
+ , wait_class 
+ , snap_id
+ , p_tmfg/1000000/ela pSec 
+ from ( 
+ select round(s.end_interval_time,'hh24') end_time 
+ , (cast(s.end_interval_time as date) - cast(s.begin_interval_time as date))*24*3600 ela 
+ , s.snap_id 
+ , wait_class 
+ , e.event_name 
+ , case when s.begin_interval_time = s.startup_time 
+ then e.time_waited_micro_fg 
+ else e.time_waited_micro_fg 
+ - lag(time_waited_micro_fg) over (partition by event_id 
+ , e.dbid 
+, e.instance_number 
+ , s.startup_time 
+ order by e.snap_id) 
+ end p_tmfg 
+ from dba_hist_snapshot s 
+ , dba_hist_system_event e 
+ where s.dbid = e.dbid 
+ and s.instance_number = e.instance_number 
+ and s.snap_id = e.snap_id 
+ and s.end_interval_time > sysdate-:day
+ and s.end_interval_time < sysdate
+ and e.wait_class != 'Idle' 
+ union all 
+ select trunc(s.end_interval_time,'hh24') end_time 
+ , (cast(s.end_interval_time as date) - cast(s.begin_interval_time as date))*24*3600 ela 
+ , s.snap_id 
+ , t.stat_name wait_class 
+ , t.stat_name event_name 
+ , case when s.begin_interval_time = s.startup_time 
+ then t.value 
+ else t.value 
+ - lag(value) over (partition by stat_id 
+ , t.dbid 
+ , t.instance_number 
+ , s.startup_time 
+ order by t.snap_id) 
+ end p_tmfg 
+ from dba_hist_snapshot s 
+ , dba_hist_sys_time_model t 
+ where s.dbid = t.dbid 
+ and s.instance_number = t.instance_number 
+ and s.snap_id = t.snap_id 
+ and s.end_interval_time > sysdate -1
+ and s.end_interval_time < sysdate
+ and t.stat_name = 'DB CPU')) 
+ group by to_char(end_time,'mm-dd hh24'), snap_id, wait_class 
+ having sum(pSec) is not null
+ order by to_char(end_time,'mm-dd hh24'), wait_class]]></sql>
+		<binds>
+			<bind id="day">
+				<prompt><![CDATA[day]]></prompt>
+				<tooltip><![CDATA[day]]></tooltip>
+				<value><![CDATA[1]]></value>
+				<bracket><![CDATA[null]]></bracket>
+			</bind>
+		</binds>
+	</query>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[AWR Sessions]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select snap_id,  instance_number, user_id,session_id,  TO_CHAR(SAMPLE_TIME,'HH24:MI') SAMPLE_TIME,  session_state, event, wait_time, time_waited, sql_id, sql_child_number CH#, program, module
+from dba_hist_active_sess_history a
+where a.snap_id =:SNAP_ID]]></sql>
+			<binds>
+				<bind id="SNAP_ID">
+					<prompt><![CDATA[SNAP_ID]]></prompt>
+					<tooltip><![CDATA[SNAP_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+	<display id="" type="" style="Chart" enable="true">
+		<name><![CDATA[AWR Machine]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+			<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+			<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+			<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+			<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+			<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+			<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+			<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+			<DATA_MAP_COLUMNS><![CDATA[\,"MACHINE"]]></DATA_MAP_COLUMNS>
+			<Y1AXIS_SCALE_MAXIMUM><![CDATA[60.0]]></Y1AXIS_SCALE_MAXIMUM>
+			<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+			<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+			<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+			<TYPE><![CDATA[BAR_HORIZ_STACK]]></TYPE>
+			<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+			<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+			<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+			<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+			<DATA_MAP_COLNAMES><![CDATA[\,"MACHINE","SNAP_ID","SUM(TIME_WAITED)","SUM(WAIT_TIME)","SUM(WAIT_TIME+TIME_WAITED)"]]></DATA_MAP_COLNAMES>
+			<DATA_MAP_SERIES><![CDATA[\,"SNAP_ID"]]></DATA_MAP_SERIES>
+			<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+			<STYLE><![CDATA[Default]]></STYLE>
+			<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+			<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+			<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+			<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+			<DATA_MAP_VALUES><![CDATA[\,"SUM(WAIT_TIME+TIME_WAITED)"]]></DATA_MAP_VALUES>
+			<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+			<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+			<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+			<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+			<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select snap_id,machine,sum(wait_time),sum(time_waited), sum(wait_time+time_waited)
+from dba_hist_active_sess_history a
+where snap_id= :SNAP_ID
+group by snap_id,machine
+order by 5 desc]]></sql>
+			<binds>
+				<bind id="SNAP_ID">
+					<prompt><![CDATA[SNAP_ID]]></prompt>
+					<tooltip><![CDATA[SNAP_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+	<display id="" type="" style="Chart" enable="true">
+		<name><![CDATA[AWR SQL]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+			<Y1AXIS_SCALE_INCREMENT><![CDATA[30.0]]></Y1AXIS_SCALE_INCREMENT>
+			<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+			<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+			<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+			<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+			<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+			<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+			<DATA_MAP_COLUMNS><![CDATA[\,"SQL_ID"]]></DATA_MAP_COLUMNS>
+			<Y1AXIS_SCALE_MAXIMUM><![CDATA[210.0]]></Y1AXIS_SCALE_MAXIMUM>
+			<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+			<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+			<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+			<TYPE><![CDATA[BAR_HORIZ_STACK]]></TYPE>
+			<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+			<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+			<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+			<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+			<DATA_MAP_COLNAMES><![CDATA[\,"SNAP_ID","SQL_ID","SUM(TIME_WAITED)","SUM(WAIT_TIME)","SUM(WAIT_TIME+TIME_WAITED)"]]></DATA_MAP_COLNAMES>
+			<DATA_MAP_SERIES><![CDATA[\,"SNAP_ID"]]></DATA_MAP_SERIES>
+			<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+			<STYLE><![CDATA[Default]]></STYLE>
+			<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+			<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+			<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+			<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+			<DATA_MAP_VALUES><![CDATA[\,"SUM(WAIT_TIME+TIME_WAITED)"]]></DATA_MAP_VALUES>
+			<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+			<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+			<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+			<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+			<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select snap_id,sql_id,sum(wait_time),sum(time_waited), sum(wait_time+time_waited)
+from dba_hist_active_sess_history a
+where snap_id= :SNAP_ID
+group by snap_id,sql_id
+order by 5 desc
+FETCH NEXT 15 ROWS ONLY]]></sql>
+			<binds>
+				<bind id="SNAP_ID">
+					<prompt><![CDATA[SNAP_ID]]></prompt>
+					<tooltip><![CDATA[SNAP_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[AWR Inst]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select snap_id,instance_number,sum(wait_time),sum(time_waited), sum(wait_time+time_waited),
+round(100* RATIO_TO_REPORT(sum(wait_time+time_waited)) OVER () ,2) Pct
+from dba_hist_active_sess_history a
+where snap_id= :SNAP_ID
+group by snap_id,instance_number
+order by 2,5 desc]]></sql>
+			<binds>
+				<bind id="SNAP_ID">
+					<prompt><![CDATA[SNAP_ID]]></prompt>
+					<tooltip><![CDATA[SNAP_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[AWR Locks]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[SELECT DISTINCT a.sql_id,
+a.blocking_session blocker_ses,
+a.blocking_session_serial# blocker_ser,
+a.user_id,
+s.sql_text,
+a.module,
+a.sample_time
+FROM dba_hist_active_sess_history a, gv$sql s
+WHERE a.sql_id = s.sql_id
+AND blocking_session IS NOT NULL
+AND a.user_id <> 0 -- exclude SYS user
+AND a.snap_id=:SNAP_ID]]></sql>
+			<binds>
+				<bind id="SNAP_ID">
+					<prompt><![CDATA[SNAP_ID]]></prompt>
+					<tooltip><![CDATA[SNAP_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[AWR SQL Text]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select snap_id,a.sql_id,dbms_lob.substr(sql_text, 100, 1) ,sum(wait_time),sum(time_waited), sum(wait_time+time_waited)
+from dba_hist_active_sess_history a,dba_hist_sqltext b
+where snap_id= :SNAP_ID
+and a.sql_id=b.sql_id
+group by snap_id,a.sql_id,dbms_lob.substr(sql_text, 100, 1)
+order by 5 desc]]></sql>
+			<binds>
+				<bind id="SNAP_ID">
+					<prompt><![CDATA[SNAP_ID]]></prompt>
+					<tooltip><![CDATA[SNAP_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+</display>
+<display id="6d4366e6-018a-1000-8001-c0a80a6d5a39" type="" style="Chart" enable="true">
+	<name><![CDATA[Session history]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<PLOT_HGRID_WIDTH><![CDATA[THINNER]]></PLOT_HGRID_WIDTH>
+		<Y1AXIS_SCALE_INCREMENT><![CDATA[10.0]]></Y1AXIS_SCALE_INCREMENT>
+		<Y2AXIS_SCALE_MAXIMUM><![CDATA[80.0]]></Y2AXIS_SCALE_MAXIMUM>
+		<Y1AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y1AXIS_LINE_WIDTH>
+		<Y1AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y1AXIS_TITLE_ALIGNMENT>
+		<LEGEND_LOCATION><![CDATA[AUTOMATIC]]></LEGEND_LOCATION>
+		<LEGEND_ALIGNMENT><![CDATA[LEFT]]></LEGEND_ALIGNMENT>
+		<XAXIS_LINE_WIDTH><![CDATA[THINNEST]]></XAXIS_LINE_WIDTH>
+		<DATA_MAP_COLUMNS><![CDATA[\,"SNAPDATE"]]></DATA_MAP_COLUMNS>
+		<Y1AXIS_SCALE_MAXIMUM><![CDATA[60.0]]></Y1AXIS_SCALE_MAXIMUM>
+		<XAXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></XAXIS_TITLE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></XAXIS_TICK_LABEL_ROTATE>
+		<Y1AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y1AXIS_LOGARITHMIC_BASE>
+		<TYPE><![CDATA[LINE_VERT_ABS]]></TYPE>
+		<GRID_WIDTH><![CDATA[THINNER]]></GRID_WIDTH>
+		<PLOT_DATALABELS_BAR_POSITION><![CDATA[ABOVE]]></PLOT_DATALABELS_BAR_POSITION>
+		<FOOTNOTE_ALIGNMENT><![CDATA[LEFT]]></FOOTNOTE_ALIGNMENT>
+		<XAXIS_TICK_LABEL_SKIP_MODE><![CDATA[AUTOMATIC]]></XAXIS_TICK_LABEL_SKIP_MODE>
+		<DATA_MAP_COLNAMES><![CDATA[\,"CURR_SESS","MAX(MAX_UTILIZATION)","RESOURCE_NAME","SNAPDATE"]]></DATA_MAP_COLNAMES>
+		<DATA_MAP_SERIES><![CDATA[\,"RESOURCE_NAME"]]></DATA_MAP_SERIES>
+		<Y2AXIS_LOGARITHMIC_BASE><![CDATA[BASE_10]]></Y2AXIS_LOGARITHMIC_BASE>
+		<DATA_MAP_COUNT><![CDATA[1]]></DATA_MAP_COUNT>
+		<STYLE><![CDATA[Default]]></STYLE>
+		<TITLE_ALIGNMENT><![CDATA[LEFT]]></TITLE_ALIGNMENT>
+		<Y2AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y2AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_MINIMUM><![CDATA[10.0]]></Y2AXIS_SCALE_MINIMUM>
+		<Y2AXIS_LINE_WIDTH><![CDATA[THINNEST]]></Y2AXIS_LINE_WIDTH>
+		<DATA_MAP_VALUES><![CDATA[\,"CURR_SESS"]]></DATA_MAP_VALUES>
+		<Y1AXIS_TICK_LABEL_ROTATE><![CDATA[HORIZONTAL]]></Y1AXIS_TICK_LABEL_ROTATE>
+		<Y2AXIS_SCALE_INCREMENT><![CDATA[20.0]]></Y2AXIS_SCALE_INCREMENT>
+		<PLOT_VGRID_WIDTH><![CDATA[THINNER]]></PLOT_VGRID_WIDTH>
+		<Y2AXIS_TITLE_ALIGNMENT><![CDATA[CENTER]]></Y2AXIS_TITLE_ALIGNMENT>
+		<SUBTITLE_ALIGNMENT><![CDATA[LEFT]]></SUBTITLE_ALIGNMENT>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[select to_char(s.END_INTERVAL_TIME,'dd-mm hh24') SnapDate, resource_name ,max(current_utilization) Curr_sess,max(max_utilization) from DBA_HIST_SNAPSHOT s, DBA_HIST_RESOURCE_LIMIT b
+where s.snap_id = b.snap_id and resource_name in ('sessions','processes') 
+and s.END_INTERVAL_TIME > sysdate -7
+group by  to_char(s.END_INTERVAL_TIME,'dd-mm hh24') ,resource_name  
+order by 1]]></sql>
+	</query>
+</display>
+<display id="73f72a47-018a-1000-8001-c0a80a6dfb50" type="" style="Table" enable="true">
+	<name><![CDATA[Audit]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT "OS_USERNAME", "USERNAME", "USERHOST", "TERMINAL", "ACTION_NAME", "LOGON_TIME", "LOGOFF_TIME", "RETURNCODE", "SESSION_CPU" FROM(
+select os_username, username, userhost, terminal, action_name, to_char(timestamp,'DD-Mon-YYYY HH24:MI') as LOGON_TIME, to_char(logoff_time, 'DD-Mon-YYYY HH24:MI') as LOGOFF_TIME,  returncode, session_cpu
+from dba_audit_session
+where TIMESTAMP BETWEEN SYSDATE-1 AND SYSDATE
+ order by timestamp
+)]]></sql>
+	</query>
+</display>
+<display id="7e34d0e4-018a-1000-8001-c0a856f95ad1" type="" style="Table" enable="true">
+	<name><![CDATA[dbstatus]]></name>
+	<description><![CDATA[overall status from database]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT "INSTANCE_NAME", "Sessions", "Processes", "Active Sess", "Inactive Sess", "Blocking", "AAS", "Resp Time", "Host %" FROM(
+SELECT 
+instance_Name , 
+(select current_utilization from gv$resource_limit a where resource_name in ('sessions') and a.inst_id=b.inst_id) "Sessions",
+(select current_utilization from gv$resource_limit a where resource_name in ('processes') and a.inst_id=b.inst_id) "Processes",
+(SELECT COUNT(*) FROM gv$session a where status='ACTIVE' and a.inst_id=b.inst_id) "Active Sess",
+(SELECT COUNT(*) FROM gv$session a where status='INACTIVE' and a.inst_id=b.inst_id) "Inactive Sess",
+(select decode(count(*),0,'No','Yes') from dba_waiters) "Blocking",
+(select ROUND(VALUE,2) value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Average Active Sessions' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "AAS",
+(select ROUND(VALUE,2) value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='SQL Service Response Time' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Resp Time",
+(select ROUND(VALUE,2) value From sys.GV_$SYSMETRIC A WHERE METRIC_NAME='Host CPU Utilization (%)' AND GROUP_ID=2 AND A.INST_ID=B.INST_ID) "Host %"
+FROM gv$instance b
+order by 1
+)]]></sql>
+	</query>
+</display>
+<display id="82484705-018a-1000-8001-c0a80a6dfc56" type="" style="Table" enable="true">
+	<name><![CDATA[Alert log view]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT "INST_ID", "MESSAGE_LEVEL", "COUNT(*)" FROM(
+with oneday as (select /*+ materialize */ * from v$diag_alert_ext where ORIGINATING_TIMESTAMP>systimestamp-1)
+select inst_id, message_level,count(*) from oneday
+where component_id like 'rdbms%' 
+group by inst_id, message_level
+)]]></sql>
+	</query>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[Alert log message]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[with oneday as (select /*+ materialize */ * from v$diag_alert_ext where ORIGINATING_TIMESTAMP>systimestamp-1)
+select inst_id, originating_timestamp,message_text from oneday
+where component_id like 'rdbms%' and message_level=:MESSAGE_LEVEL]]></sql>
+			<binds>
+				<bind id="MESSAGE_LEVEL">
+					<prompt><![CDATA[MESSAGE_LEVEL]]></prompt>
+					<tooltip><![CDATA[MESSAGE_LEVEL]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+</display>
+<display id="8dd4c4cc-018a-1000-8001-c0a80a6d6f68" type="" style="Table" enable="true">
+	<name><![CDATA[SQL Elapsed - JDBC]]></name>
+	<description><![CDATA[]]></description>
+	<tooltip><![CDATA[]]></tooltip>
+	<drillclass><![CDATA[]]></drillclass>
+	<CustomValues>
+		<TYPE><![CDATA[horizontal]]></TYPE>
+	</CustomValues>
+	<query>
+		<sql><![CDATA[SELECT "SQL_ID", "SNAP_ID", "BDATE", "PLAN_HASH_VALUE", "EXECS", "AVGTIME", "AVG_LIO" FROM(
+Select sql_id,a.snap_id,to_char(begin_interval_time,'yy/mm/dd hh24:mi') BDate,plan_hash_value,nvl(executions_delta,0) execs,round((elapsed_time_delta/decode(nvl(executions_delta,0),0,1,executions_delta))/1000000,2) avgtime,
+round((buffer_gets_delta/decode(nvl(buffer_gets_delta,0),0,1,executions_delta))) avg_lio
+from dba_hist_sqlstat a ,dba_hist_snapshot b
+where module like '%JDBC%' 
+and executions_delta > 0  
+and (elapsed_time_delta/decode(nvl(executions_delta,0),0,1,executions_delta))/1000000 > 1
+and a.snap_id=b.snap_id and a.INSTANCE_NUMBER=b.INSTANCE_NUMBER
+and BEGIN_INTERVAL_TIME > sysdate-1
+order by avgtime desc
+)]]></sql>
+	</query>
+	<display id="" type="" style="Table" enable="true">
+		<name><![CDATA[sql text]]></name>
+		<description><![CDATA[]]></description>
+		<tooltip><![CDATA[]]></tooltip>
+		<drillclass><![CDATA[]]></drillclass>
+		<CustomValues>
+			<TYPE><![CDATA[horizontal]]></TYPE>
+		</CustomValues>
+		<query>
+			<sql><![CDATA[select sql_id,dbms_lob.substr(sql_text, 500, 1)
+from dba_hist_sqltext 
+where sql_id=:SQL_ID]]></sql>
+			<binds>
+				<bind id="SQL_ID">
+					<prompt><![CDATA[SQL_ID]]></prompt>
+					<tooltip><![CDATA[SQL_ID]]></tooltip>
+					<value><![CDATA[NULL_VALUE]]></value>
+					<bracket><![CDATA[null]]></bracket>
+				</bind>
+			</binds>
+		</query>
+	</display>
+</display>
+</displays>
