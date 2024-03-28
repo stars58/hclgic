@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Default values
+DEFAULT_DIRECTORY='DATA_PUMP_DIR'
+DEFAULT_LOG_FILE='import.log'
+DEFAULT_JOB_NAME='import_job'
+DEFAULT_SCHEMA='HR'
+DEFAULT_DUMPFILE='export.dmp'
+
+# Prompt user for input or use default values
+read -p "Enter directory name [$DEFAULT_DIRECTORY]: " DIRECTORY
+DIRECTORY=${DIRECTORY:-$DEFAULT_DIRECTORY}
+
+read -p "Enter log file name [$DEFAULT_LOG_FILE]: " LOG_FILE
+LOG_FILE=${LOG_FILE:-$DEFAULT_LOG_FILE}
+
+read -p "Enter job name [$DEFAULT_JOB_NAME]: " JOB_NAME
+JOB_NAME=${JOB_NAME:-$DEFAULT_JOB_NAME}
+
+read -p "Enter schema name [$DEFAULT_SCHEMA]: " SCHEMA
+SCHEMA=${SCHEMA:-$DEFAULT_SCHEMA}
+
+read -p "Enter dump file name [$DEFAULT_DUMPFILE]: " DUMPFILE
+DUMPFILE=${DUMPFILE:-$DEFAULT_DUMPFILE}
+
+# Generate impdp parameter file
+PARAM_FILE="impdp_parameters.par"
+echo "DIRECTORY=$DIRECTORY" > $PARAM_FILE
+echo "DUMPFILE=$DUMPFILE" >> $PARAM_FILE
+echo "LOGFILE=$LOG_FILE" >> $PARAM_FILE
+echo "JOB_NAME=$JOB_NAME" >> $PARAM_FILE
+echo "SCHEMAS=$SCHEMA" >> $PARAM_FILE
+
+# Display generated parameter file
+echo "Generated impdp parameter file:"
+cat $PARAM_FILE
+
+# Prompt user to execute impdp
+read -p "Do you want to execute impdp with the generated parameter file? [y/n]: " EXECUTE
+if [ "$EXECUTE" == "y" ]; then
+    impdp parfile=$PARAM_FILE
+    echo "impdp executed."
+else
+    echo "impdp not executed."
+fi

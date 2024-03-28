@@ -1,0 +1,56 @@
+write a modular shellscript to 
+1) execute $ORACLE_HOME/OPatch/opatch util deleteinactivepatches
+2) create directory /opt/oracle/patches/PSUJan2024 and subdirectories of GI,DB,JAVA
+3) unzip files in /opt/oracle/patches/PSUJan2024/GI to the same directory
+unzip files in /opt/oracle/patches/PSUJan2024/DB to the same directory
+unzip files in /opt/oracle/patches/PSUJan2024/JAVA to the same directory
+4) Change directory cd /opt/oracle/patches/PSUJan2024
+and execute the following statement
+ $ORACLE_HOME/OPatch/opatch version
+       $ORACLE_HOME/OPatch/opatch lsinventory > /opt/oracle/patches/PSUJan2024/GI_pre_lsinventory.log
+       $ORACLE_HOME/OPatch/opatch lspatches  >> /opt/oracle/patches/PSUJan2024/GI_pre_lsinventory.log
+
+2 / 2
+
+
+
+=============================================
+
+#!/bin/bash
+
+# Function to execute OPatch commands
+execute_opatch_commands() {
+    $ORACLE_HOME/OPatch/opatch util deleteinactivepatches
+}
+
+# Function to create directories and unzip patches
+create_and_unzip_patches() {
+    mkdir -p /opt/oracle/patches/PSUJan2024/GI
+    mkdir -p /opt/oracle/patches/PSUJan2024/DB
+    mkdir -p /opt/oracle/patches/PSUJan2024/JAVA
+    
+    # Unzip files
+    unzip -q /path/to/GI_patches.zip -d /opt/oracle/patches/PSUJan2024/GI
+    unzip -q /path/to/DB_patches.zip -d /opt/oracle/patches/PSUJan2024/DB
+    unzip -q /path/to/JAVA_patches.zip -d /opt/oracle/patches/PSUJan2024/JAVA
+}
+
+# Function to execute OPatch commands after patch extraction
+execute_opatch_after_patch_extraction() {
+    cd /opt/oracle/patches/PSUJan2024
+    
+    # Execute OPatch commands
+    $ORACLE_HOME/OPatch/opatch version
+    $ORACLE_HOME/OPatch/opatch lsinventory > GI_pre_lsinventory.log
+    $ORACLE_HOME/OPatch/opatch lspatches >> GI_pre_lsinventory.log
+}
+
+# Main function
+main() {
+    execute_opatch_commands
+    create_and_unzip_patches
+    execute_opatch_after_patch_extraction
+}
+
+# Main entry point
+main

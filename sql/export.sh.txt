@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Default values
+USERNAME="username"
+PASSWORD="password"
+DATABASE="database"
+DIRECTORY="directory"
+DUMPFILE="dumpfile.dmp"
+LOGFILE="export.log"
+
+# Function to create parameter file
+create_parameter_file() {
+    cat <<EOF >expdp_params.par
+USERID=$USERNAME/$PASSWORD@$DATABASE
+DIRECTORY=$DIRECTORY
+DUMPFILE=$DUMPFILE
+LOGFILE=$LOGFILE
+EOF
+}
+
+# Function to execute expdp
+execute_expdp() {
+    echo "Executing expdp..."
+    expdp parfile=expdp_params.par
+}
+
+# Main function
+main() {
+    echo "Enter Oracle username [Default: $USERNAME]:"
+    read input_username
+    USERNAME="${input_username:-$USERNAME}"
+
+    echo "Enter Oracle password [Default: $PASSWORD]:"
+    read -s input_password
+    PASSWORD="${input_password:-$PASSWORD}"
+    echo
+
+    echo "Enter Oracle database [Default: $DATABASE]:"
+    read input_database
+    DATABASE="${input_database:-$DATABASE}"
+
+    echo "Enter Oracle directory [Default: $DIRECTORY]:"
+    read input_directory
+    DIRECTORY="${input_directory:-$DIRECTORY}"
+
+    echo "Enter dumpfile name [Default: $DUMPFILE]:"
+    read input_dumpfile
+    DUMPFILE="${input_dumpfile:-$DUMPFILE}"
+
+    echo "Enter logfile name [Default: $LOGFILE]:"
+    read input_logfile
+    LOGFILE="${input_logfile:-$LOGFILE}"
+
+    create_parameter_file
+
+    echo "Parameter file created: expdp_params.par"
+    
+    echo "Do you want to execute expdp now? [Y/n]"
+    read execute_choice
+    case $execute_choice in
+        [Yy]* ) execute_expdp;;
+        * ) echo "Exiting without executing expdp.";;
+    esac
+}
+
+# Execute the script
+main

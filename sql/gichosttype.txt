@@ -1,0 +1,25 @@
+# Get the hostname
+hostname=$(hostname)
+
+# Extracting the relevant information
+last_digit=$(echo $hostname | rev | cut -c1)
+five_digit=$(echo $hostname | cut -c1-5)
+
+# Determine the environment based on the last digit
+case $last_digit in
+    p) environment="Production" ;;
+    d) environment="Development" ;;
+    u) environment="UAT" ;;
+    *) environment="Unknown" ;;
+esac
+
+# Determine the OS based on the five-digit code
+case $five_digit in
+    r) os="Linux" ;;
+    s) os="Solaris" ;;
+    *) os="Unknown" ;;
+esac
+
+# Display the results
+echo "Environment: $environment"
+echo "Operating System: $os"

@@ -1,0 +1,6 @@
+INSTANCES=$(ps -ef | grep [o]ra_pmon | awk '{print $NF}'|sed -e 's/ora_pmon_//g'|grep -v sed|grep -v "s///g")
+
+find /path/to/folder -type f -printf "%TY-%Tm\t%s\n" | awk -F '-' '{sum[$1"-"$2]+=$3} END {for (date in sum) print date, sum[date]}'
+
+find /path/to/folder -type f -printf "%TY-%Tm\t%s\t%p\n" | sort -k1,1 -k2,2nr | awk -F '\t' 'BEGIN {last_month = ""} {if ($1 != last_month) {count = 0; last_month = $1; print "Month:", last_month} count++; if (count <= 10) print $3, $2}'
+
