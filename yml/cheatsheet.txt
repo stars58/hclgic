@@ -1,0 +1,6 @@
+-- run
+ansible-playbook sampleplaybook.yml -i ansible_hosts
+-- syntax check
+ansible-playbook – syntax-check sampleplaybook.yml -i ansible_hosts
+-- dryrun
+ansible-playbook -C sampleplaybook.yml -i ansible_hosts
