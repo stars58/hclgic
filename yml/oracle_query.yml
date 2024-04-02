@@ -1,0 +1,30 @@
+---
+- name: Query Oracle Database
+  hosts: oracle1.localdomain
+  gather_facts: no
+  vars:
+    oracle_user: "system"
+    oracle_password: "Opera123"
+    oracle_host: "192.168.10.15"
+    oracle_port: "1521"
+    oracle_sid: "orclpdb"
+    query: "SELECT * FROM v$instance"
+  tasks:
+    - name: Install cx_Oracle package
+      pip:
+        name: cx_Oracle
+
+    - name: Query Oracle Database
+      oracle_query:
+        user: "{{ oracle_user }}"
+        password: "{{ oracle_password }}"
+        host: "{{ oracle_host }}"
+        port: "{{ oracle_port }}"
+        sid: "{{ oracle_sid }}"
+        sql: "{{ query }}"
+      register: query_result
+
+    - name: Display query result
+      debug:
+        var: query_result
+

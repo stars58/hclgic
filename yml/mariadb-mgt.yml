@@ -1,0 +1,27 @@
+---
+ - name: MariaDB Management using Ansible
+   hosts: databases 
+   gather_facts: true
+   become: true
+   vars:
+     mysql_root_password: "StrongRootPassword!"
+     python_mysql: "{{ 'python3-mysqldb' if ansible_distribution|lower in ['debian', 'ubuntu'] else 'python3-PyMySQL' }}"
+
+   tasks:
+     - name: Installing MariaDB Server
+       package:
+         name: mariadb-server
+         state: latest
+         update_cache: yes
+
+     - name: Installing python_mysql
+       package:
+         name: "{{ python_mysql }}"
+         state: present
+         update_cache: yes
+
+     - name: start and enable mariadb server
+       service:
+         name: mariadb
+         enabled: true
+         state: started

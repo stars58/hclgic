@@ -1,0 +1,11 @@
+ - name: gather 'min', 'parameter' and 'tablespace' facts
+   oracle_facts:
+     hostname: "192.168.56.101"
+     port: 1521
+     service_name: "orcl"
+     username: "system"
+     password: "oracle"
+     gather_subset:
+        - "parameter"
+        - "tablespace"
+   register: dbfacts

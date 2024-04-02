@@ -1,0 +1,16 @@
+- name: Configure NGINX servers
+  hosts: databases
+  become: true
+  tasks:
+  
+  - name: Install NGINX package
+    yum:
+      name: nginx
+      state: present
+      update_cache: yes
+
+  - name: Enable and start NGINX service
+    service:
+      name: nginx
+      enabled: yes
+      state: started

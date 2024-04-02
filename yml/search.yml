@@ -1,0 +1,16 @@
+---
+  - name: Examples of lineinfile
+    hosts: databases
+    
+    tasks:
+      - name: "Example1: Validate if a String or line is present in the file"
+        become: yes
+        become_user: root
+        tags: example1
+        lineinfile:
+          path: /etc/sudoers
+          line: "root"
+          state: present
+          backup: yes
+        check_mode: yes
+        register: example1out
