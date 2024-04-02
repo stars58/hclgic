@@ -6,7 +6,7 @@
     - name: Execute SQL Query
       oracle_sql:
         username: "system"
-        password: "Opera123"
+        password: "password123"
         service_name: "orclcdb"
         port: "1521"
         hostname : "oracle1.localdomain"
