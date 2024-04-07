@@ -1,0 +1,430 @@
+#!/bin/bash -u
+#  Shuzi Chen
+#  06/02/2020
+# Validation steps:
+#   1) Instance process 
+#   2) Cluster processes
+#   3) /u01 filesystem is not in READ only mode
+#   4) validate instance(s)
+#   5) validate database(s)
+#   6) validate pdbs if exists
+#   7) validate tablespaces
+#   8) validate datafiles
+#   9) validate wallet stataus
+#  10) valiadte rman backup 
+#  11) switch a logfile to validate archiver
+#  12) validate apply process on standby database 
+#  13) validate scans and listener status
+#  14) validate a connection via TNS
+#  15) validate golden gate programs
+#
+workdir=$( echo $0|sed 's/\/db_health_validation.sh//' )
+hostName=$( hostname )
+host=$( echo ${hostName}|cut -d'.' -f 1 )
+SQLPLUS="sqlplus -s / as sysdba"
+dblogfile="/tmp/db_validate"
+tnslogfile="/tmp/tns_validate.log"
+ggslog=/tmp/validate_ggs
+ggsdir=/u01/app/ggs
+
+# Verify it's logged in as oracle
+loguser=$( whoami )
+if [ $loguser != "oracle" ]; then
+ echo "You have to login as oracle to run this script."
+ exit 0
+fi
+
+# Check instance process
+SID_CNT=`ps -ef | grep ora_pmon | grep -v grep |grep -v ASM |grep -v ORCL | cut -d'_' -f3 | grep -v ^+ | wc -l`
+if [ $SID_CNT -lt 1 ]; then
+# Check any instance in /etc/oratab file
+num_sid=$( grep -v \^# /etc/oratab|grep -i /u01/app/oracle|grep -v ASM|grep -v ORCL|cut -d ':' -f 2|wc -l)
+ if [ $num_sid -gt "0" ]; then
+  echo "Error: No instance is up running on ${hostName} but there is instance(s) registered in /etc/oratab." #> ${logfile}
+  exit 0
+ else
+  echo "No instance created on ${hostName}."
+  exit 0
+ fi
+else
+for dbhome in `grep -v \^# /etc/oratab|grep -i /u01/app/oracle|grep -v ASM|grep -v ORCL|cut -d ':' -f 2`; do
+ break
+done
+fi
+export ORACLE_HOME=${dbhome}
+export PATH=$ORACLE_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+
+#Check whether Oracle binary is RAC enabled
+rac_cnt=$( ar -t $ORACLE_HOME/rdbms/lib/libknlopt.a|grep kcsm.o|wc -l )
+if [ $rac_cnt -ne "0" ]; then
+#Check cluster processes has and cssd 
+has_cnt=$( ps -eaf|grep -i ohasd.bin |grep -v grep |wc -l )
+if [ $has_cnt -eq "0" ]; then
+  echo "Error: Oracle High Availablity (ohasd) is not up running."
+  exit 0
+fi
+#Check culster daemon process
+csd_cnt=$( ps -eaf|grep -i ocssd.bin|grep -v grep|wc -l )
+if [ $csd_cnt -eq "0" ]; then
+  echo "Error: Cluster Deamon Process (ocssd) is not up running."
+  exit 0
+fi
+fi 
+#Validate /u01 filesystem is not READ ONLY
+exec 3>&1 4>&2 #set up extra file descriptors
+ERROR=$( { touch $ORACLE_HOME/u01_rw.log 2>&4 1>&3; } 2>&1 )
+if [ $? -ne "0" ]; then
+echo "Error in /u01 filesystem: \"${ERROR}.\""
+exit 0
+else
+rm -f $ORACLE_HOME/u01_rw.log
+fi
+exec 3>&- 4>&- # release extra file descriptors
+
+# prompt for entering dbsnmp password to test a connection via TNS
+echo "Please enter dbsnmp password"
+read -p "dbsnmp password: " DBSNMPPWD JUNK
+
+#Get SID name
+for dbsid in `ps -ef | grep "ora_pmon_" | grep -v grep |grep -v ASM |grep -v ORCL | cut -d'_' -f3 | grep -v ^+` ; do
+export ORACLE_SID=$dbsid;
+echo 
+echo "Validating the instance ${dbsid}..."
+$SQLPLUS <<EOF 
+set truncate off
+set feedback off
+set trimspool on
+set appinfo on
+set verify off
+set pages 1000
+set lines 200
+set echo off
+set serveroutput on
+col instance_name format a10
+col host_name format a20
+col start_time format a20
+col status format a15
+col logins format a10
+col archiver format a15 
+col instance_number format 9
+col version format a10
+col tablespace_name format a30
+col name format a10
+col db_unique_name format a20
+col log_mode format a15
+col open_mode format a15
+col WRL_TYPE format a10
+col WRL_PARAMETER format a60
+col WALLET_TYPE format a15
+spool ${dblogfile}_${dbsid}.log
+prompt
+SELECT instance_name,instance_number,host_name, version, TO_CHAR(startup_time,'mm/dd/yyyy HH24:MI') start_time  
+,status, logins, DECODE(archiver, 'FAILED', archiver , archiver ) archiver
+FROM gv\$instance ORDER BY instance_number;
+prompt
+prompt Validating the database...
+prompt
+select name, db_unique_name, log_mode, open_mode, database_role from gv\$database;
+prompt
+prompt Validating the pdbs if the instance is CDB...
+prompt
+declare
+vpdb  integer;
+v_instance_role integer;
+type pdb_list is record ( pdb_name varchar2(30), status varchar2(15));
+type pdb_list_arr is table of pdb_list index by pls_integer;
+l_pdbs      pdb_list_arr;
+begin 
+select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+if v_instance_role = 0 then 
+ execute immediate 'select count(*) from all_objects where object_name = ''DBA_PDBS'' and object_type = ''VIEW''' into vpdb;
+ if vpdb <> 0 then
+  dbms_output.put_line('PDB Name     Status (Not in READ WRITE mode)');
+  dbms_output.put_line('----------------------------------------------');
+  execute immediate 
+   q'[SELECT name, open_mode FROM v\$pdbs where open_mode <> 'READ WRITE' and name <> 'PDB\$SEED']' bulk collect into l_pdbs;  
+  for indx in 1 .. l_pdbs.count
+   loop 
+     dbms_output.put_line (l_pdbs (indx).pdb_name ||'    '|| l_pdbs (indx).status);
+   end loop; 
+ end if;
+else
+ dbms_output.put_line ('Physical Standby database.');
+end if;
+end;
+/ 
+--Validating tablespaces are not ONLINE on Primary Database
+prompt
+declare
+v_instance_role integer;
+type tbs_list is record ( tablespace_name varchar2(30), status varchar2(15));
+type tbs_list_arr is table of tbs_list index by pls_integer;
+l_tbs      tbs_list_arr;
+begin
+ select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+ if v_instance_role = 0 then 
+  dbms_output.put_line('Validating tablespaces are not ONLINE on Primary Database.');
+  dbms_output.put_line('Tablespace Name               Status (Not Online)');
+  dbms_output.put_line('---------------------------------------------------');
+  execute immediate
+  q'[select tablespace_name, status from dba_tablespaces where status <> 'ONLINE']' bulk collect into l_tbs;
+  for indx in 1 .. l_tbs.count
+  loop 
+   dbms_output.put_line (l_tbs (indx).tablespace_name ||'              '|| l_tbs (indx).status);
+  end loop;
+ end if;
+end;
+/
+prompt
+prompt Validating data files are not ONLINE...
+prompt
+declare
+vcnt  integer;
+cursor cur is select name, status from v\$datafile where status not in ('ONLINE', 'SYSTEM');
+vcur   cur%rowtype;
+begin
+ select count(*) into vcnt from v\$datafile where status not in ('ONLINE', 'SYSTEM');
+ if vcnt > 0 then
+  dbms_output.put_line('File Name                                         Status (Not Online)');
+  dbms_output.put_line('-----------------------------------------------------------------------');
+  open cur;
+  loop
+   fetch cur into vcur;
+   exit when cur%notfound;
+   dbms_output.put_line(vcur.name||'   '||vcur.status);
+  end loop;
+  close cur;
+ else
+  dbms_output.put_line('All data files are ONLINE.');
+ end if;
+end;
+/
+--Validating Wallet Status on Primary Database...
+prompt
+declare
+v_instance_role integer;
+vwrl_type       varchar2(20);
+vwrl_parameter  varchar2(255);
+vstatus         varchar2(20);
+vwallet_type    varchar2(20) := '';
+v_version       integer;
+begin
+   select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+   if v_instance_role = 0 then
+   dbms_output.put_line('Validating Wallet Status on Primary Database...');
+   dbms_output.put_line('WRL Type   WRL Parameter,                              Status       Wallet Type');
+   dbms_output.put_line('--------------------------------------------------------------------------------');
+   select to_number(substr(version, 1,2)) into v_version from v\$instance;
+   if v_version = 11 then
+   select WRL_TYPE,WRL_PARAMETER,STATUS into vwrl_type, vwrl_parameter, vstatus from v\$encryption_wallet;
+   else
+   execute immediate 'select WRL_TYPE,WRL_PARAMETER,STATUS,WALLET_TYPE from v\$encryption_wallet' into vwrl_type, vwrl_parameter, vstatus, vwallet_type;
+   end if;
+   dbms_output.put_line(vwrl_type||'   '||vwrl_parameter||'  '||vstatus||'  '||vwallet_type);
+   end if;
+end;
+/
+-- Validating Rman backup are not COMPLETED on Primary Database. Checking 2 days status...
+prompt
+declare
+type CurType  is ref cursor;
+cur           CurType;
+v_input_type  varchar2(15);
+v_status      varchar2(25);
+v_start_time  varchar2(15);
+v_stmt_str    varchar2(500);  
+v_instance_role integer;
+vcnt      integer;
+begin
+ select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+ if v_instance_role = 0 then
+  dbms_output.put_line('Validating Rman backup are not COMPLETED on Primary Database. Checking 2 days status...');
+  execute immediate 'select count(*) from V\$RMAN_BACKUP_JOB_DETAILS where trunc(start_time) > sysdate -2 and status <> ''COMPLETED''' into vcnt;
+  if vcnt <> 0 then
+   v_stmt_str := 'select INPUT_TYPE, STATUS, to_char(START_TIME,''mm/dd/yyyy'') start_time 
+       from V\$RMAN_BACKUP_JOB_DETAILS where trunc(start_time) > sysdate -2 and status <> ''COMPLETED'' order by session_key';
+   dbms_output.put_line('Input Type             Failed Status                   Start Time ');
+   dbms_output.put_line('--------------------------------------------------------------------');
+   open cur for v_stmt_str;
+   loop
+     fetch cur into v_input_type, v_status, v_start_time;
+     exit when cur%notfound;
+	  dbms_output.put_line(v_input_type||'      '||v_status||'      '||v_start_time);
+   end loop;	
+   close cur;   
+  else
+   dbms_output.put_line('All Rman backup status are COMPLETED');
+  end if;
+ end if;
+end;
+/
+-- valiadte archiver by switching a logfile 
+prompt
+declare
+v_instance_role integer;
+begin
+   select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+   if v_instance_role = 0 then
+    dbms_output.put_line('Testing archiver by switching a logfile on Primary Database...');
+    execute immediate 'alter system switch logfile';
+	dbms_output.put_line ('Switch logfile succeeded.');
+   end if;
+exception
+  when others then
+   raise;
+end;
+/
+-- Validate Apply Process on Standby Database
+prompt
+declare
+v_instance_role integer;
+v_apply_proc    integer;
+begin
+   select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+   if v_instance_role = 1 then
+     dbms_output.put_line('Validating Apply Process on Standby Database...');
+    SELECT count(*) into v_apply_proc FROM GV\$MANAGED_STANDBY WHERE PROCESS LIKE 'MRP%';
+	 if v_apply_proc = 0 then
+	 dbms_output.put_line('Error: Apply Proccess is Not Started.');
+	 else
+	 dbms_output.put_line('Apply Procces is Started.');
+	 end if;
+   end if;
+exception
+  when others then
+   raise;
+end;
+/
+prompt
+prompt Generating a TNS to test a connection...
+prompt
+declare
+v_instance_role integer;
+v_domain        varchar2(60);
+v_dbname        varchar2(30);
+v_db_link       varchar2(255);
+v_dot           varchar2(20);
+v_service       varchar2(100);
+begin
+   select count(*) into v_instance_role from v\$database where database_role = 'PHYSICAL STANDBY';
+   if v_instance_role = 0 then
+   	execute immediate 'select instr(global_name, ''.'', 1,1) from global_name' into v_dot;
+	 if v_dot <> 0 then 
+	  execute immediate 'select substr(global_name, instr(global_name, ''.'', 1,1)) from global_name' into v_domain;
+	  if upper(v_domain) like '%WORLD' then
+	    v_domain := '';
+	  end if;
+	end if; 
+    if v_domain is NULL then
+	  execute immediate 'select ''.''||value from v\$parameter where name=''db_domain''' into v_domain;
+	 if v_domain = '.' then
+	   v_domain := NULL;
+	 end if;	
+	end if;
+	 select substr(value, 1,instr(value,',')-1) into v_service from v\$parameter where name = 'service_names';
+	if v_service is not null then 
+	select '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST='||host_name||v_domain||')(PORT=1521))(CONNECT_DATA=(SERVICE_NAME='||v_service||')))'
+	 into v_db_link from v\$instance;
+	else
+    select '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST='||host_name||')(PORT=1521))(CONNECT_DATA=(SID='||instance_name||')))'
+	into v_db_link from v\$instance;
+	end if;
+	dbms_output.put_line(v_db_link);
+   else
+    dbms_output.put_line('Physical Standby Database.');
+   end if;
+end;
+/
+spool off 
+exit;
+EOF
+done
+
+# check Listener Scan if there is one or more SCAN(s) on host then normal else 0 no SCAN running on the host, alerting
+
+echo "" > ${tnslogfile}
+if [ $rac_cnt -ne "0" ]; then
+echo "Validating Scans on ${host}... " >> ${tnslogfile}
+echo "" >> ${tnslogfile}
+numScan=$( srvctl status scan_listener|grep -v grep |grep -i "is running"|wc -l )
+numScanEnabled=$( srvctl status scan_listener|grep -v grep |grep -i "is enabled"|wc -l ) 
+if [ $numScan -eq "0" ] || [ $numScanEnabled -eq "0" ]; then
+  echo "Error: NO SCAN RUNNING." >> ${tnslogfile}
+elif [ $numScan -gt "0" ] && [ $numScan -lt "3" ]; then
+  echo "Warning: ONLY $numScan SCANS ARE UP RUNNING." >> ${tnslogfile}
+elif [ $numScan -eq "3" ] && [ $numScanEnabled -eq "3" ]; then
+  echo "ALL SCANS ARE UP RUNNING." >> ${tnslogfile}
+elif [ $numScanEnabled -gt "0" ] && [ $numScanEnabled -lt "3" ]; then
+  echo "Warning: ONLY $numScanEnabled SCANS ARE ENABLED." >> ${tnslogfile}
+fi
+fi
+# Check local listener
+echo "" >> ${tnslogfile}
+echo "Validating Local Listener..." >> ${tnslogfile}
+echo "" >> ${tnslogfile}
+localListener=`ps -eaf|grep -i "LISTENER "|grep -i "-inherit"|grep -v grep|wc -l`
+if [ $localListener -eq "0" ]; then
+   echo "Error: NO LOCAL LISTENER RUNNING" >> ${tnslogfile}
+else
+   echo "LOCAL LISTENER IS UP RUNNING" >> ${tnslogfile}
+fi
+
+#Testing a connection via TNS
+for dbsid in `ps -ef | grep "ora_pmon" | grep -v grep |grep -v ASM |grep -v ORCL | cut -d'_' -f3 | grep -v ^+` ; do
+ if [ -f ${dblogfile}_${dbsid}.log ]; then
+  v_cnt=`cat ${dblogfile}_${dbsid}.log|grep DESCRIPTION=|grep -v grep|wc -l`
+  if [ $v_cnt -ne "0" ]; then
+  v_db_link=`cat ${dblogfile}_${dbsid}.log|grep DESCRIPTION=|grep -v grep`
+  echo "" >> ${tnslogfile}
+  echo "Testing a connection on ${dbsid} via TNS..." >> ${tnslogfile}
+  echo "" >> ${tnslogfile}
+sqlplus -s dbsnmp/${DBSNMPPWD}@\'${v_db_link}\' <<EOF >> ${tnslogfile}
+   prompt TNS Connection is successful.
+   select sysdate from dual;
+   exit;
+EOF
+ fi
+fi
+done 
+ 
+#View TNS log file
+if [ -f ${tnslogfile} ]; then
+ cat ${tnslogfile}
+fi
+
+# Validating golden gate programs
+echo 
+echo "Validating Golden Gate..."
+if [ ! -d $ggsdir ]; then
+  echo "No Golden Gate installed on ${host}"
+  exit 0
+else
+cd $ggsdir 
+for dbsid in `ps -ef | grep "ora_pmon_" | grep -v grep |grep -v ASM |grep -v ORCL | cut -d'_' -f3 | grep -v ^+` ; do
+ export ORACLE_SID=$dbsid;
+ echo 
+ echo "Validating Golden Gate for instance ${dbsid}..." > ${ggslog}_${dbsid}.log
+./ggsci -s <<EOF>>${ggslog}_${dbsid}.log
+info all
+EOF
+done 
+cd ${workdir}
+fi
+
+# View ggs log file(s)
+for gg_file in $( ls /tmp/validate_ggs*.log ); do
+ echo $( cat ${gg_file} |grep -i validating );
+ cat ${gg_file}|grep -i running |grep -v -i program |grep -v -i ggsci |grep -v grep 
+ cat ${gg_file}|grep -i stopped |grep -v -i program |grep -v -i ggsci |grep -v grep 
+ cat ${gg_file}|grep -i abended |grep -v -i program |grep -v -i ggsci |grep -v grep 
+done
+#List log files
+echo
+echo "Review below log files for detail..."
+echo
+for file in $( ls /tmp/*validate*.log ) ; do
+echo "Log file: ${file}"
+done
+echo 
+
