@@ -102,7 +102,7 @@ check_aas
 done
 #mail out
 if [[ "${tomail}" = "y" ]]; then
-    echo | /opt/csw/bin/mailx -r noreply@sistic.com.sg  -s 'DB Load Alert (AAS)' vincentng@sistic.com.sg < ${dblog}
+    echo | /opt/csw/bin/mailx -r noreply@mail.com.sg  -s 'DB Load Alert (AAS)' vincentng@mail.com.sg < ${dblog}
 fi
 stty sane
 
