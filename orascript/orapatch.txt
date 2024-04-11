@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Function to display system information
+display_system_info() {
+    echo "OS Type: $(uname)"
+    echo "Current User: $(whoami)"
+    echo "ORACLE_SID: $ORACLE_SID"
+    echo "Memory of Server:"
+    free -h
+}
+
+# Function to prompt user for variables
+prompt_user_variables() {
+    read -p "Enter PSUBASE (default: /opt/oracle/patches): " PSUBASE
+    PSUBASE=${PSUBASE:-/opt/oracle/patches}
+
+    read -p "Enter PSUDIR (default: PSUJan2024): " PSUDIR
+    PSUDIR=${PSUDIR:-PSUJan2024}
+}
+
+# Function to apply patch GI
+apply_patch_GI() {
+    echo "Applying patch GI..."
+
+    if [ "$(id -u)" -eq 0 ]; then
+        if [ "$ORACLE_SID" != "+ASM" ]; then
+            . oraenv
+        fi
+    fi
+
+    # Analyze the patch
+    cd "$PSUBASE/$PSUDIR/GI/35940989"
+    $ORACLE_HOME/OPatch/opatchauto apply "$PSUBASE/$PSUDIR/GI/35940989" -analyze
+
+    # Confirm ASM and CDB are running
+    ps -ef | grep pmon
+}
+
+# Function to apply JDK patch
+apply_patch_JDK() {
+    echo "Applying JDK patch..."
+
+    # Upgrade JDK for GI Home
+    if [ "$(id -u)" -eq 0 ]; then
+        . oraenv
+        +ASM
+        cd "$PSUBASE/$PSUDIR/JDK/35949090"
+        $ORACLE_HOME/OPatch/opatch apply
+    fi
+
+    # Upgrade JDK for DB Home
+    su - oracle -c '. oraenv; CDL1P; cd "$PSUBASE/$PSUDIR/JDK/35949090"; $ORACLE_HOME/OPatch/opatch apply'
+
+    # Lock the CRS
+    if [ "$(id -u)" -eq 0 ]; then
+        . oraenv
+        +ASM
+        $ORACLE_HOME/crs/install/roothas.sh -postpatch
+    fi
+}
+
+# Function to apply DB patch
+apply_patch_DB() {
+    echo "Applying DB patch..."
+    
+    # Perform Pre-Check
+    cd "$PSUBASE/$PSUDIR/JAVA/35926646"
+    $ORACLE_HOME/OPatch/opatch prereq CheckConflictAgainstOHWithDetail -ph ./
+
+    # Shutdown DB
+    sqlplus / as sysdba <<EOF
+    shutdown immediate;
+    exit;
+EOF
+
+    # Apply Patch
+    cd "$PSUBASE/$PSUDIR/JAVA/35926646"
+    $ORACLE_HOME/OPatch/opatch apply
+
+    # Apply Datapatch
+    datapatch -verbose
+}
+
+# Main script starts here
+
+# Display system information
+display_system_info
+
+# Prompt user for variables
+prompt_user_variables
+
+# Apply patch GI
+apply_patch_GI
+
+# Apply JDK patch
+apply_patch_JDK
+
+# Apply DB patch
+apply_patch_DB

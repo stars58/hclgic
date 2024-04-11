@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Set default values for variables
+w_dir="/opt"
+w_days=100
+
+# Check if user-defined values exist
+if [ -n "$1" ]; then
+    w_dir="$1"
+fi
+
+if [ -n "$2" ]; then
+    w_days="$2"
+fi
+
+# Function to delete files with extension trc more than w_days
+delete_old_files() {
+    find "$w_dir" -maxdepth 1 -type f -name "*.trc" -mtime +"$w_days" -delete
+}
+
+# Function to check disk space and delete old files accordingly
+check_disk_space() {
+    # Get disk usage percentage of w_dir
+    disk_usage=$(df -h "$w_dir" | awk 'NR==2 {print $5}' | tr -d '%')
+
+    # Check if disk usage is less than 20%
+    if [ "$disk_usage" -lt 20 ]; then
+        delete_old_files
+        # Increase w_days by 10
+        w_days=$((w_days + 10))
+        # Call the function recursively until disk space is at least 20% or w_days is less than or equal to 10
+        check_disk_space
+    fi
+}
+
+# Call the function to check disk space and delete old files
+check_disk_space
+
+echo "Operation completed."
