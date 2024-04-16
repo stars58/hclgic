@@ -6,3 +6,4 @@ ansible-playbook – syntax-check sampleplaybook.yml -i ansible_hosts
 ansible-playbook -C sampleplaybook.yml -i ansible_hosts
 -- file permission check
 ansible localhost -m shell -a "stat -c '%A' /home/oracle/test.txt" -b
+ansible localhost -m shell -a "hostname && stat -c '%A' /home/oracle/test.txt" -b
