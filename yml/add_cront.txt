@@ -1,0 +1,18 @@
+---
+- name: Add script and schedule in cron
+  hosts: your_target_host
+  become: yes
+
+  tasks:
+    - name: Copy script to remote server
+      copy:
+        src: /path/to/your/script.sh
+        dest: /home/user/script.sh
+        mode: 0755  # Ensure the script has execute permissions
+
+    - name: Add cron job
+      cron:
+        name: "Run script daily"
+        minute: "0"
+        hour: "0"
+        job: "/home/user/script.sh"
