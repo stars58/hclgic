@@ -1,0 +1,206 @@
+#!/bin/bash
+
+# Function to set up the environment
+setup_environment() {
+    export SOFTWARE_DIR=/u01/software
+    export ORACLE_BASE=/u01/app/oracle
+    export GRID_HOME=/u01/app/19.0.0/grid
+    export DB_HOME=${ORACLE_BASE}/product/19.0.0/dbhome_1
+    export OPATCH_FILE="p6880880_190000_Linux-x86-64.zip"
+    export PATCH_FILE="p34130714_190000_Linux-x86-64.zip"
+    export PATCH_TOP=${SOFTWARE_DIR}/34130714
+    export ORACLE_HOME=${GRID_HOME}
+    export PATH=${ORACLE_HOME}/OPatch:${PATH}
+
+    echo "Environment variables set up."
+}
+
+# Function to apply the patches
+apply_patches() {
+    echo "Applying patches..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with applying the patch? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Apply the patch
+    cd ${GRID_HOME}
+    mv OPatch OPatch.`date +"%Y-%m-%d"`
+    unzip -oq ${SOFTWARE_DIR}/${OPATCH_FILE}
+
+    cd ${DB_HOME}
+    mv OPatch OPatch.`date +"%Y-%m-%d"`
+    unzip -oq ${SOFTWARE_DIR}/${OPATCH_FILE}
+
+    # Unzip the GI release update patch software on all nodes of the cluster
+    cd ${SOFTWARE_DIR}
+    unzip -oq ${PATCH_FILE}
+    
+    echo "Patches applied."
+}
+
+# Function to check for patch conflicts
+check_patch_conflicts() {
+    echo "Checking for patch conflicts..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with checking patch conflicts? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Check for patch conflicts
+    opatch prereq CheckConflictAgainstOHWithDetail -phBaseDir ${PATCH_TOP}/34133642
+    opatch prereq CheckConflictAgainstOHWithDetail -phBaseDir ${PATCH_TOP}/34160635
+    opatch prereq CheckConflictAgainstOHWithDetail -phBaseDir ${PATCH_TOP}/34139601
+    opatch prereq CheckConflictAgainstOHWithDetail -phBaseDir ${PATCH_TOP}/34318175
+    opatch prereq CheckConflictAgainstOHWithDetail -phBaseDir ${PATCH_TOP}/33575402
+    
+    echo "Patch conflicts checked."
+}
+
+# Function to check system space
+check_system_space() {
+    echo "Checking system space..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with checking system space? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Create file with patch list
+    cat > /tmp/patch_list_gihome.txt <<EOF
+${PATCH_TOP}/34133642
+${PATCH_TOP}/34160635
+${PATCH_TOP}/34139601
+${PATCH_TOP}/34318175
+${PATCH_TOP}/33575402
+EOF
+    
+    # Check system space
+    opatch prereq CheckSystemSpace -phBaseFile /tmp/patch_list_gihome.txt
+    
+    echo "System space checked."
+}
+
+# Function to apply the patch as root
+apply_patch_as_root() {
+    echo "Applying patch as root..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with applying the patch as root? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Apply the patch
+    opatchauto apply ${PATCH_TOP}
+    
+    echo "Patch applied as root."
+}
+
+# Function to check services status
+check_services_status() {
+    echo "Checking services status..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with checking services status? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Check services status
+    ${GRID_HOME}/bin/crsctl stat res -t
+    
+    echo "Services status checked."
+}
+
+# Function to check PDBs running status
+check_pdbs_running_status() {
+    echo "Checking PDBs running status..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with checking PDBs running status? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Check PDBs running status
+    sqlplus / as sysdba <<EOF
+show pdbs
+EOF
+    
+    echo "PDBs running status checked."
+}
+
+# Function to apply datapatch on closed PDBs
+apply_datapatch_on_closed_pdbs() {
+    echo "Applying datapatch on closed PDBs..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with applying datapatch on closed PDBs? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Open pluggable databases
+    sqlplus / as sysdba <<EOF
+alter pluggable database all open;
+exit;
+EOF
+    
+    # Apply datapatch
+    cd $ORACLE_HOME/OPatch
+    ./datapatch -verbose
+    
+    echo "Datapatch applied on closed PDBs."
+}
+
+# Function to recompile any invalid objects
+recompile_invalid_objects() {
+    echo "Recompiling invalid objects..."
+    
+    # Proceed only if the user confirms
+    read -p "Proceed with recompiling invalid objects? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "Stopping script."
+        return
+    fi
+    
+    # Recompile invalid objects
+    $ORACLE_HOME/perl/bin/perl \
+        -I$ORACLE_HOME/perl/lib \
+        -I$ORACLE_HOME/rdbms/admin \
+        $ORACLE_HOME/rdbms/admin/catcon.pl \
+        -l /tmp/ \
+        -b postpatch_${ORACLE_SID}_recompile \
+        -C 'PDB$SEED' \
+        $ORACLE_HOME/rdbms/admin/utlrp.sql
+    
+    echo "Invalid objects recompiled."
+}
+
+# Main script execution
+main() {
+    setup_environment
+    apply_patches
+    check_patch_conflicts
+    check_system_space
+    apply_patch_as_root
+    check_services_status
+    check_pdbs_running_status
+    apply_datapatch_on_closed_pdbs
+    recompile_invalid_objects
+}
+
+main

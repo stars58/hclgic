@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Set up the environment
+setup_environment() {
+    export SOFTWARE_DIR="/u01/software"
+    
+    # 19c
+    export OPATCH_FILE="p6880880_190000_Linux-x86-64.zip"
+    export PATCH_FILE="p34133642_190000_Linux-x86-64.zip"
+    export PATCH_TOP="${SOFTWARE_DIR}/34133642"
+    
+    export PATH="${ORACLE_HOME}/OPatch:${PATH}"
+    
+    export ORACLE_SID="cdb1"
+    export ORAENV_ASK="NO"
+    . oraenv
+    export ORAENV_ASK="YES"
+}
+
+# Apply the patch
+apply_patch() {
+    # Keep a copy of the existing OPatch and unzip the latest version
+    cd "${ORACLE_HOME}"
+    mv OPatch "OPatch.$(date +'%Y-%m-%d')"
+    unzip -oq "${SOFTWARE_DIR}/${OPATCH_FILE}"
+    
+    # Unzip the patch software
+    cd "${SOFTWARE_DIR}"
+    unzip -oq "${PATCH_FILE}"
+    
+    # Shutdown the services run from ORACLE_HOME
+    dbshut "${ORACLE_HOME}"
+    
+    # Apply the patch
+    cd "${PATCH_TOP}"
+    opatch prereq CheckConflictAgainstOHWithDetail -ph ./
+    opatch apply -silent
+    
+    # Start the listener
+    lsnrctl start
+    
+    # Start the database and open all pluggable databases
+    sqlplus / as sysdba <<EOF
+startup;
+alter pluggable database all open;
+exit;
+EOF
+    
+    # Run datapatch
+    cd "$ORACLE_HOME/OPatch"
+    ./datapatch -verbose
+}
+
+# Recompile invalid objects
+recompile_objects() {
+    $ORACLE_HOME/perl/bin/perl \
+        -I$ORACLE_HOME/perl/lib \
+        -I$ORACLE_HOME/rdbms/admin \
+        $ORACLE_HOME/rdbms/admin/catcon.pl \
+        -l /tmp/ \
+        -b postpatch_${ORACLE_SID}_recompile \
+        -C 'PDB$SEED' \
+        $ORACLE_HOME/rdbms/admin/utlrp.sql
+}
+
+# Main function
+main() {
+    while true; do
+        echo "Please choose a task to perform:"
+        echo "1. Set up the environment"
+        echo "2. Apply the patch"
+        echo "3. Recompile invalid objects"
+        echo "4. Exit"
+        
+        read -p "Enter your choice (1-4): " choice
+        
+        case $choice in
+            1) setup_environment ;;
+            2) apply_patch ;;
+            3) recompile_objects ;;
+            4) echo "Exiting..."; exit 0 ;;
+            *) echo "Invalid choice, please try again." ;;
+        esac
+    done
+}
+
+# Run the main function
+main
