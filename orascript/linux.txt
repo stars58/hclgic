@@ -1,0 +1,33 @@
+INSTANCES=$(ps -ef | grep [o]ra_pmon | awk '{print $NF}'|sed -e 's/ora_pmon_//g'|grep -v sed|grep -v "s///g")
+
+find /path/to/folder -type f -printf "%TY-%Tm\t%s\n" | awk -F '-' '{sum[$1"-"$2]+=$3} END {for (date in sum) print date, sum[date]}'
+
+find /path/to/folder -type f -printf "%TY-%Tm\t%s\t%p\n" | sort -k1,1 -k2,2nr | awk -F '\t' 'BEGIN {last_month = ""} {if ($1 != last_month) {count = 0; last_month = $1; print "Month:", last_month} count++; if (count <= 10) print $3, $2}'
+
+find /path/to/directory -type f -exec stat --format='%y %s' {} + | awk '{split($1,a,"-"); sum[a[2]] += $2} END {for (month in sum) print month, sum[month]}'
+
+-- check if server is RAC or Single
+ps -ef | grep -E "ora_pmon_+ASM" | awk '{print $NF}' | grep -o '[0-9]*$' | while read suffix; do
+    if [[ -n $suffix ]]; then
+        echo "RAC"
+    else
+        echo "Single"
+    fi
+done
+
+# Run the SQL query using sqlplus
+result=$(sqlplus -s / as sysdba <<EOF
+SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
+select decode(count(*), 0, 'No', 'Yes') c1 from v\$dataguard_status;
+EOF
+)
+
+# Trim any leading/trailing whitespace from the result
+result=$(echo "$result" | xargs)
+
+# Check the result and output an appropriate message
+if [ "$result" == "Yes" ]; then
+    echo "Oracle Data Guard is in use."
+else
+    echo "Oracle Data Guard is not in use."
+fi
