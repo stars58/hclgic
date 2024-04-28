@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Set Oracle environment variables (modify according to your setup)
+export ORACLE_HOME="/path/to/oracle/home"
+export PATH="$ORACLE_HOME/bin:$PATH"
+export ORACLE_SID="YOUR_ORACLE_SID"
+
+# Function to execute an SQL query
+execute_sql_query() {
+    local query="$1"
+    sqlplus -S "/ as sysdba" <<EOF
+    SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
+    $query
+    EXIT
+EOF
+}
+
+# Get current Oracle SID and open mode
+current_oracle_sid=$(execute_sql_query "SELECT instance_name FROM v\$instance;")
+open_mode=$(execute_sql_query "SELECT open_mode FROM v\$database;")
+
+# Get database role (primary or standby)
+database_role=$(execute_sql_query "SELECT database_role FROM v\$database;")
+
+# Check if the database is single or cluster
+cluster_database=$(execute_sql_query "SELECT value FROM v\$parameter WHERE name='cluster_database';")
+
+# Check if the database has Data Guard
+dataguard_status=$(execute_sql_query "SELECT DECODE(COUNT(*), 0, 'No', 'Yes') FROM v\$dataguard_status;")
+
+# Display the results
+echo "Oracle SID: $current_oracle_sid"
+echo "Open mode: $open_mode"
+echo "Database role: $database_role"
+echo "Cluster database: $cluster_database"
+echo "Has Data Guard: $dataguard_status"
