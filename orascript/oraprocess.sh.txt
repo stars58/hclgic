@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Check for PMON process
+process_count=$(ps -ef | grep -i pmon | grep -v grep | wc -l)
+
+# Check if process_count is greater than 0
+if [ "$process_count" -gt 0 ]; then
+  echo "Oracle PMON process is running."
+  # Add your code to continue with other tasks here
+else
+  echo "Oracle PMON process is not running."
+  exit 1
+fi
