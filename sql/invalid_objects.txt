@@ -1,0 +1,14 @@
+SELECT pdb_name, object_type, object_name, status
+FROM (
+    SELECT 
+        c.name AS pdb_name, 
+        o.object_type, 
+        o.object_name, 
+        o.status
+    FROM 
+        cdb_objects o
+        JOIN cdb_pdbs c ON o.con_id = c.con_id
+    WHERE 
+        o.status = 'INVALID'
+)
+ORDER BY pdb_name, object_type, object_name;
