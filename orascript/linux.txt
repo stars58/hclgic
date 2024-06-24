@@ -18,6 +18,29 @@ ps -ef | grep -E "ora_pmon_+ASM" | awk '{print $NF}' | grep -o '[0-9]*$' | while
     fi
 done
 
+-- check if directory exist
+test -d /opt/oracle && echo "Directory exists" || echo "Directory does not exist"
+
+-- check last character is numeric
+
+echo "Hello123" | tail -c 1 | grep -q '[0-9]' && echo "The last character is numeric" || echo "The last character is not numeric"
+
+output=$(echo "Hello123")
+last_char=${output: -1}
+
+if [[ $last_char =~ [0-9] ]]; then
+  echo "The last character is numeric"
+else
+  echo "The last character is not numeric"
+fi
+
+
+if [ -d "/opt/oracle" ]; then
+  echo "Directory exists"
+else
+  echo "Directory does not exist"
+fi
+
 # Run the SQL query using sqlplus
 result=$(sqlplus -s / as sysdba <<EOF
 SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
