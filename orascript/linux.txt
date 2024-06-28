@@ -18,6 +18,9 @@ ps -ef | grep -E "ora_pmon_+ASM" | awk '{print $NF}' | grep -o '[0-9]*$' | while
     fi
 done
 
+-- find the execution path of emagent
+ps -ef | grep emagent | grep -v grep | awk '{print $8}'
+
 -- check if directory exist
 test -d /opt/oracle && echo "Directory exists" || echo "Directory does not exist"
 
