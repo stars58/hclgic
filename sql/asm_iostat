@@ -1,0 +1,9 @@
+SELECT
+    path, 
+    read_time, 
+    write_time, 
+    read_reqs, 
+    write_reqs,
+    (read_time + write_time) / (read_reqs + write_reqs) AS avg_queue_disk_time
+FROM
+    V$ASM_DISK_STAT;
