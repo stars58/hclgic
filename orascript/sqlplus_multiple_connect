@@ -1,0 +1,25 @@
+@echo off
+setlocal
+
+REM Define the path to your connection list file
+set CONNECTION_FILE=connections.txt
+
+REM Check if the connection file exists
+if not exist "%CONNECTION_FILE%" (
+    echo Connection file %CONNECTION_FILE% not found!
+    exit /b 1
+)
+
+REM Read each line in the connection file
+for /f "usebackq delims=" %%A in ("%CONNECTION_FILE%") do (
+    echo Connecting to %%A
+    sqlplus -s %%A @your_script.sql
+    if errorlevel 1 (
+        echo Error occurred with connection %%A
+    ) else (
+        echo Successfully executed script on %%A
+    )
+)
+
+echo All connections processed.
+endlocal
