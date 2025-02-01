@@ -1,0 +1,24 @@
+@echo off
+setlocal enabledelayedexpansion
+
+:: Define the mapping list
+:: Format: "input=value"
+set "map1=apple=fruit"
+set "map2=carrot=vegetable"
+set "map3=chicken=meat"
+set "map4=rose=flower"
+
+:: Prompt user for input
+set /p userInput=Enter a value: 
+
+:: Loop through predefined mappings
+for /f "tokens=1,2 delims==" %%A in ('set map') do (
+    if /i "!userInput!"=="%%A" (
+        echo Translation: %%B
+        exit /b
+    )
+)
+
+:: If no match is found
+echo No translation found.
+exit /b
