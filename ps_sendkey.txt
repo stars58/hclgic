@@ -1,0 +1,8 @@
+# Load Windows Forms assembly
+Add-Type -AssemblyName System.Windows.Forms
+
+# Wait briefly to allow focus on the desired window
+Start-Sleep -Seconds 3
+
+# Send keys "abc" to the active window
+[System.Windows.Forms.SendKeys]::SendWait("abc")
